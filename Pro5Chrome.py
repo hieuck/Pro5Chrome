@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, Menu
 import subprocess
 import json
 import os
@@ -304,6 +304,49 @@ open_all_chrome_button.pack(side=tk.LEFT, padx=5)
 # --------------------------------
 # End Chrome profile configuration
 # --------------------------------
+
+# -----------------
+# Start Right Click
+# -----------------
+import pyperclip  # Thư viện để thao tác với clipboard
+
+# Hàm để xử lý sự kiện chuột phải vào Listbox
+def on_right_click(event):
+    # Xác định vị trí của con trỏ chuột
+    listbox_index = profiles_listbox.nearest(event.y)
+
+    # Chọn profile tương ứng với mục được click chuột phải
+    profiles_listbox.selection_clear(0, tk.END)
+    profiles_listbox.selection_set(listbox_index)
+    profiles_listbox.activate(listbox_index)
+
+    # Hiển thị menu ngữ cảnh tại vị trí con trỏ chuột
+    context_menu.post(event.x_root, event.y_root)
+
+# Hàm để sao chép tên profile được chọn vào clipboard
+def copy_selected_profile():
+    selected_index = profiles_listbox.curselection()
+    if selected_index:
+        selected_profile = profiles_listbox.get(selected_index)
+        pyperclip.copy(selected_profile)
+
+# Hàm để xóa tên profile được chọn trong Listbox
+def delete_selected_item():
+    selected_index = profiles_listbox.curselection()
+    if selected_index:
+        profiles_listbox.delete(selected_index)
+
+# Tạo menu ngữ cảnh
+context_menu = Menu(root, tearoff=0)
+context_menu.add_command(label="Copy tên profile", command=lambda: copy_selected_profile())
+context_menu.add_command(label="Xóa mục", command=delete_selected_item)
+
+# Gán sự kiện chuột phải vào Listbox
+profiles_listbox.bind("<Button-3>", on_right_click)
+
+# ---------------
+# End Right Click
+# ---------------
 
 # ---------------------------
 # Start Hàm tương tác profile
