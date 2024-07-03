@@ -71,6 +71,15 @@ def open_user_data_folder():
     user_data_path = os.path.abspath(user_data_path)
     subprocess.Popen(['explorer', user_data_path])
 
+# Hàm để xóa đường dẫn Chrome đã chọn
+def delete_selected_chrome_path():
+    selected_path = chrome_var.get()
+    if selected_path in chrome_paths:
+        chrome_paths.remove(selected_path)
+        save_chrome_paths_to_config()
+        chrome_dropdown['values'] = chrome_paths
+        chrome_var.set(chrome_paths[0] if chrome_paths else default_chrome_path)
+
 # Hàm để đọc danh sách URL từ tệp
 def read_urls():
     if os.path.exists(URL_FILE):
@@ -277,6 +286,10 @@ chrome_dropdown.pack(side=tk.LEFT, padx=5)
 # Thêm nút để mở thư mục User Data
 open_user_data_button = ttk.Button(chrome_frame, text="Mở User Data", command=open_user_data_folder)
 open_user_data_button.pack(side=tk.LEFT, padx=5)
+
+# Tạo nút để xóa đường dẫn Chrome đã chọn
+delete_chrome_path_button = ttk.Button(chrome_frame, text="Xóa đường dẫn đã chọn", command=delete_selected_chrome_path)
+delete_chrome_path_button.pack(side=tk.LEFT, padx=5)
 
 # Tạo frame chứa Combobox và Entry cho Profile Chrome
 profile_frame = ttk.Frame(root)
