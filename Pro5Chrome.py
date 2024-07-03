@@ -203,47 +203,6 @@ def update_listbox():
 # End Chrome profile configuration
 # --------------------------------
 
-# ---------
-# Start URL
-# ---------
-
-# Hàm để đọc danh sách URL từ tệp
-def read_urls():
-    if os.path.exists(URL_FILE):
-        with open(URL_FILE, 'r') as file:
-            return json.load(file)
-    else:
-        return []
-
-# Hàm để lưu danh sách URL vào tệp
-def save_urls(urls):
-    with open(URL_FILE, 'w') as file:
-        json.dump(urls, file, indent=4)
-
-# Hàm để lưu URL mới vào danh sách và `URL.json`, chỉ lưu khi URL là mới
-def save_url_to_list_and_file(url):
-    urls = read_urls()
-    if url not in urls:
-        urls.append(url)
-        save_urls(urls)
-        update_urls_listbox()
-    else:
-        print(f"URL '{url}' đã tồn tại trong danh sách.")
-
-# Hàm để mở URL được chọn trong Chrome
-def open_url(url):
-    chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
-    if 'chrome.exe' not in chrome_path.lower():
-        chrome_path = os.path.join(chrome_path, 'chrome.exe')
-    subprocess.Popen([chrome_path, url])
-
-# Hàm để cập nhật Listbox URLs
-def update_urls_listbox():
-    urls_listbox.delete(0, tk.END)
-    urls = read_urls()
-    for url in urls:
-        urls_listbox.insert(tk.END, url)
-
 # Hàm để mở toàn bộ Chrome với các profile
 def open_all_chrome_profiles():
     chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
@@ -279,16 +238,6 @@ def open_url_all_profiles():
 def open_chrome_on_enter(event=None):
     if event and event.keysym == 'Return':
         open_chrome_and_add_profile()
-
-# Hàm để xử lý khi nhấn phím Enter trên trường nhập URL
-def handle_enter(event):
-    if event.keysym == 'Return':
-        open_and_save_url()
-
-# Hàm để xóa danh sách URL và cập nhật giao diện
-def clear_urls_list():
-    save_urls([])
-    update_urls_listbox()
 
 # Tạo cửa sổ chính
 root = tk.Tk()
@@ -436,9 +385,46 @@ def on_close():
 
 root.protocol("WM_DELETE_WINDOW", on_close)
 
-# ----------------------------------
-# Thêm phần URL vào giao diện
-# ----------------------------------
+# ---------
+# Start URL
+# ---------
+
+# Hàm để đọc danh sách URL từ tệp
+def read_urls():
+    if os.path.exists(URL_FILE):
+        with open(URL_FILE, 'r') as file:
+            return json.load(file)
+    else:
+        return []
+
+# Hàm để lưu danh sách URL vào tệp
+def save_urls(urls):
+    with open(URL_FILE, 'w') as file:
+        json.dump(urls, file, indent=4)
+
+# Hàm để lưu URL mới vào danh sách và `URL.json`, chỉ lưu khi URL là mới
+def save_url_to_list_and_file(url):
+    urls = read_urls()
+    if url not in urls:
+        urls.append(url)
+        save_urls(urls)
+        update_urls_listbox()
+    else:
+        print(f"URL '{url}' đã tồn tại trong danh sách.")
+
+# Hàm để mở URL được chọn trong Chrome
+def open_url(url):
+    chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
+    if 'chrome.exe' not in chrome_path.lower():
+        chrome_path = os.path.join(chrome_path, 'chrome.exe')
+    subprocess.Popen([chrome_path, url])
+
+# Hàm để cập nhật Listbox URLs
+def update_urls_listbox():
+    urls_listbox.delete(0, tk.END)
+    urls = read_urls()
+    for url in urls:
+        urls_listbox.insert(tk.END, url)
 
 # Hàm để lưu URL mới vào danh sách và cập nhật giao diện
 def add_new_url():
@@ -480,6 +466,11 @@ add_url_button.pack(side=tk.LEFT, padx=5)
 # Tạo frame mới cho khung URL
 url_buttons_frame = ttk.Frame(root)
 url_buttons_frame.pack(pady=10, fill=tk.X)
+
+# Hàm để xử lý khi nhấn phím Enter trên trường nhập URL
+def handle_enter(event):
+    if event.keysym == 'Return':
+        open_and_save_url()
 
 # Gắn sự kiện nhấn phím Enter vào trường nhập URL
 new_url_entry.bind('<Return>', handle_enter)
@@ -523,6 +514,11 @@ def delete_selected_urls():
         update_urls_listbox()
     else:
         print("Vui lòng chọn ít nhất một URL để xóa")
+
+# Hàm để xóa danh sách URL và cập nhật giao diện
+def clear_urls_list():
+    save_urls([])
+    update_urls_listbox()
 
 # Xử lý sự kiện nhấp đúp vào một URL trong Listbox để mở URL với profile tương ứng
 urls_listbox.bind('<Double-Button-1>', lambda event: open_url_from_listbox(event))
