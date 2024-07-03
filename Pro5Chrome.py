@@ -412,12 +412,20 @@ urls_listbox.pack(side=tk.LEFT, padx=5, pady=10)
 # Thêm các URLs vào Listbox
 update_urls_listbox()
 
-# Hàm để mở URL từ Listbox
+# Hàm để mở URL từ Listbox với profile tương ứng
 def open_url_from_listbox(event=None):
     index = urls_listbox.curselection()
     if index:
         selected_url = urls_listbox.get(index)
-        open_url(selected_url)
+        selected_profile = profile_var.get()
+        chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
+        if 'chrome.exe' not in chrome_path.lower():
+            chrome_path = os.path.join(chrome_path, 'chrome.exe')
+        if selected_profile:
+            profile_directory = f"--profile-directory=Profile {selected_profile}"
+            subprocess.Popen([chrome_path, profile_directory, selected_url])
+        else:
+            open_url(selected_url)
     else:
         print("Vui lòng chọn một URL từ danh sách")
 
