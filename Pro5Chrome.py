@@ -414,7 +414,7 @@ def add_new_url():
 
 # Tạo frame mới cho khung nhập URL
 url_input_frame = ttk.Frame(root)
-url_input_frame.pack(pady=10)
+url_input_frame.pack(pady=10, fill=tk.X)
 
 # Label và Entry cho nhập URL mới
 new_url_label = ttk.Label(url_input_frame, text="Nhập URL mới:")
