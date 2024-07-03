@@ -332,12 +332,16 @@ profiles_listbox.pack(side=tk.LEFT, padx=5)
 # Thêm các profile vào Listbox
 update_listbox()
 
+# Tạo frame chứa các nút đăng nhập và mở toàn bộ chrome
+listbox_login_frame = ttk.Frame(listbox_frame)
+listbox_login_frame.pack(padx=5, pady=5, fill=tk.X)
+
 # Nút Đăng Nhập Google cho Listbox
-login_button_listbox = ttk.Button(listbox_frame, text="Đăng Nhập Google (Danh sách)", command=login_google_from_listbox)
+login_button_listbox = ttk.Button(listbox_login_frame, text="Đăng Nhập Google (Danh sách)", command=login_google_from_listbox)
 login_button_listbox.pack(side=tk.LEFT, padx=5)
 
 # Tạo nút để mở toàn bộ Chrome với các profile
-open_all_chrome_button = ttk.Button(listbox_frame, text="Mở Toàn Bộ Chrome", command=open_all_chrome_profiles)
+open_all_chrome_button = ttk.Button(listbox_login_frame, text="Mở Toàn Bộ Chrome", command=open_all_chrome_profiles)
 open_all_chrome_button.pack(side=tk.LEFT, padx=5)
 
 # Xử lý sự kiện nhấp đúp vào một profile trong Listbox
