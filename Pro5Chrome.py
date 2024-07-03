@@ -399,6 +399,7 @@ def open_and_save_url():
     if new_url:
         open_url(new_url)
         save_url_to_list_and_file(new_url)
+        new_url_entry.delete(0, tk.END)  # Xóa nội dung trong trường nhập sau khi lưu
     else:
         print("Vui lòng nhập một URL")
 
@@ -571,6 +572,88 @@ open_url_button.pack(side=tk.LEFT, padx=5, pady=10)
 # ------------------------------------------------------------
 # End Nút để mở các tệp profiles.json, config.json và URL.json
 # ------------------------------------------------------------
+
+# ----------------------------------
+# -------------Selenium-------------
+# ----------------------------------
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from webdriver_manager.chrome import ChromeDriverManager
+import os
+import time
+
+# Hàm để đăng nhập vào Google với Selenium
+def login_google_selenium(email, password, profile):
+    chrome_options = ChromeOptions()
+    chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
+    if 'chrome.exe' not in chrome_path.lower():
+        chrome_path = os.path.join(chrome_path, 'chrome.exe')
+
+    chrome_options.binary_location = chrome_path
+    # chrome_options.add_argument('--start-maximized')  # Khởi động trình duyệt với cửa sổ lớn nhất
+
+    # Thêm các tùy chọn khác nếu cần
+    
+    service = ChromeService(executable_path=ChromeDriverManager().install())
+
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    
+    try:
+        driver.get('https://accounts.google.com')
+
+        # Tìm và nhập email
+        email_field = driver.find_element(By.ID, 'identifierId')
+        email_field.send_keys(email)
+        email_field.send_keys(Keys.RETURN)
+        time.sleep(2)
+
+        # Tìm và nhập mật khẩu
+        password_field = driver.find_element(By.NAME, 'password')
+        password_field.send_keys(password)
+        password_field.send_keys(Keys.RETURN)
+        time.sleep(2)
+
+        # Kiểm tra đăng nhập thành công
+        if "myaccount.google.com" in driver.current_url:
+            print("Đăng nhập thành công!")
+        else:
+            print("Đăng nhập thất bại.")
+    except Exception as e:
+        print(f"Đã xảy ra lỗi: {e}")
+    finally:
+        driver.quit()
+
+# Định nghĩa biến selected_profile như một biến global hoặc trong phạm vi chương trình của bạn
+selected_profile = tk.StringVar()
+
+# Tạo frame mới cho Selenium và các phần liên quan
+def create_selenium_frame():
+    global selected_profile  # Đảm bảo biến global selected_profile được sử dụng
+
+    selenium_frame = ttk.Frame(root)
+    selenium_frame.pack(pady=10, fill=tk.X)
+
+    # Label và Entry cho email và password
+    email_label = ttk.Label(selenium_frame, text="Email:")
+    email_label.pack(side=tk.LEFT, padx=5)
+    email_entry = ttk.Entry(selenium_frame, width=30)
+    email_entry.pack(side=tk.LEFT, padx=5)
+
+    password_label = ttk.Label(selenium_frame, text="Password:")
+    password_label.pack(side=tk.LEFT, padx=5)
+    password_entry = ttk.Entry(selenium_frame, show="*", width=30)
+    password_entry.pack(side=tk.LEFT, padx=5)
+
+    # Nút Đăng nhập Google bằng Selenium
+    login_selenium_button = ttk.Button(selenium_frame, text="Đăng Nhập Google (Selenium)",
+                                       command=lambda: login_google_selenium(email_entry.get(), password_entry.get(), selected_profile.get()))
+    login_selenium_button.pack(side=tk.LEFT, padx=5)
+
+# Gọi hàm để tạo frame Selenium trong ứng dụng chính của bạn
+create_selenium_frame()
 
 # Lưu trạng thái đường dẫn Chrome khi thoát
 def on_close():
