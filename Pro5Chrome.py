@@ -4,10 +4,10 @@ import subprocess
 import json
 import os
 
-# Đường dẫn tệp profiles.json, config.json và URL.js trong cùng thư mục với file .py
+# Đường dẫn tệp profiles.json, config.json và URL.json trong cùng thư mục với file .py
 PROFILE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'profiles.json')
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
-URL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'URL.js')
+URL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'URL.json')
 
 # Hàm để đọc danh sách profiles từ tệp
 def read_profiles():
@@ -133,7 +133,7 @@ def open_chrome_and_add_profile():
     else:
         print("Vui lòng chọn hoặc nhập một profile")
 
-# Hàm để lưu URL mới vào danh sách và `URL.js`, chỉ lưu khi URL là mới
+# Hàm để lưu URL mới vào danh sách và `URL.json`, chỉ lưu khi URL là mới
 def save_url_to_list_and_file(url):
     urls = read_urls()
     if url not in urls:
@@ -434,7 +434,7 @@ delete_urls_button = ttk.Button(url_buttons_frame, text="Xóa danh sách URLs", 
 delete_urls_button.pack(side=tk.LEFT, padx=5, pady=10)
 
 # ----------------------------------
-# Nút để mở các tệp profiles.js, config.js và URL.js
+# Nút để mở các tệp profiles.json, config.json và URL.json
 # ----------------------------------
 
 def open_profiles_file():
@@ -446,7 +446,7 @@ def open_config_file():
 def open_url_file():
     subprocess.Popen(['notepad.exe', URL_FILE])
 
-# Tạo frame mới để chứa hai nút "Mở config.json", "Mở profiles.json" và "Mở URL.js"
+# Tạo frame mới để chứa hai nút "Mở config.json", "Mở profiles.json" và "Mở URL.json"
 open_buttons_frame = ttk.Frame(root)
 open_buttons_frame.pack(pady=10)
 
@@ -458,8 +458,8 @@ open_config_button.pack(side=tk.LEFT, padx=5, pady=10)
 open_profiles_button = ttk.Button(open_buttons_frame, text="Mở profiles.json", command=open_profiles_file)
 open_profiles_button.pack(side=tk.LEFT, padx=5, pady=10)
 
-# Nút để mở URL.js
-open_url_button = ttk.Button(open_buttons_frame, text="Mở URL.js", command=open_url_file)
+# Nút để mở URL.json
+open_url_button = ttk.Button(open_buttons_frame, text="Mở URL.json", command=open_url_file)
 open_url_button.pack(side=tk.LEFT, padx=5, pady=10)
 
 # Chạy GUI
