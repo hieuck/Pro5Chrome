@@ -647,6 +647,13 @@ def create_selenium_frame():
     password_entry = ttk.Entry(selenium_frame, show="*", width=30)
     password_entry.pack(side=tk.LEFT, padx=5)
 
+    # Thêm hàm cho sự kiện khi nhấn Enter trong password_entry
+    def on_enter(event):
+        login_google_selenium(email_entry.get(), password_entry.get(), selected_profile.get())
+
+    # Bắt sự kiện Enter khi ở trong password_entry
+    password_entry.bind("<Return>", on_enter)
+
     # Nút Đăng nhập Google bằng Selenium
     login_selenium_button = ttk.Button(selenium_frame, text="Đăng Nhập Google (Selenium)",
                                        command=lambda: login_google_selenium(email_entry.get(), password_entry.get(), selected_profile.get()))
