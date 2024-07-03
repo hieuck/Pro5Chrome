@@ -8,6 +8,10 @@ import os
 # --------------------Copyright (c) 2024 hieuck--------------------
 # -----------------------------------------------------------------
 
+# Tạo cửa sổ chính
+root = tk.Tk()
+root.title("Profiles Google Chrome")
+
 # Đường dẫn tệp profiles.json, config.json và URL.json trong cùng thư mục với file .py
 PROFILE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'profiles.json')
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
@@ -17,11 +21,10 @@ URL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'URL.json')
 # Start Chrome configuration
 # --------------------------
 
-# Hàm để đọc đường dẫn Chrome từ config
-
 # Đường dẫn Chrome mặc định nếu không có trong config
 default_chrome_path = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 
+# Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r') as file:
@@ -93,12 +96,34 @@ def save_chrome_paths_to_config():
     with open(CONFIG_FILE, 'w') as file:
         json.dump(config, file, indent=4)
 
+# Tạo frame chứa Combobox và Entry cho đường dẫn Chrome
+chrome_frame = ttk.Frame(root)
+chrome_frame.pack(pady=10, fill=tk.X)
+
+# Label và Combobox cho đường dẫn Chrome
+chrome_path_label = ttk.Label(chrome_frame, text="Chọn hoặc Nhập đường dẫn Chrome:")
+chrome_path_label.pack(side=tk.LEFT, padx=5)
+
+chrome_var = tk.StringVar()
+chrome_var.set(read_chrome_path() or default_chrome_path)
+chrome_dropdown = ttk.Combobox(chrome_frame, textvariable=chrome_var)
+chrome_dropdown['values'] = chrome_paths
+chrome_dropdown.pack(side=tk.LEFT, padx=5)
+
+# Thêm nút để mở thư mục User Data
+open_user_data_button = ttk.Button(chrome_frame, text="Mở User Data", command=open_user_data_folder)
+open_user_data_button.pack(side=tk.LEFT, padx=5)
+
+# Tạo nút để xóa đường dẫn Chrome đã chọn
+delete_chrome_path_button = ttk.Button(chrome_frame, text="Xóa đường dẫn đã chọn", command=delete_selected_chrome_path)
+delete_chrome_path_button.pack(side=tk.LEFT, padx=5)
+
 # ------------------------
 # End Chrome configuration
 # ------------------------
 
 # ----------------------------------
-# Start Chrome profile configuration
+# Start Chrome profiles configuration
 # ----------------------------------
 
 # Hàm để đọc danh sách profiles từ tệp
@@ -175,6 +200,44 @@ def close_chrome():
     except Exception as e:
         print(f"Đã xảy ra lỗi khi đóng Chrome: {e}")
 
+# Hàm để xử lý khi nhấn Enter trên Combobox để mở Chrome
+def open_chrome_on_enter(event=None):
+    if event and event.keysym == 'Return':
+        open_chrome_and_add_profile()
+
+# Tạo frame chứa Combobox và Entry cho Profile Chrome
+profile_frame = ttk.Frame(root)
+profile_frame.pack(pady=10, fill=tk.X)
+
+# Label cho Combobox và Listbox
+profile_label = ttk.Label(profile_frame, text="Chọn hoặc Nhập Profile:")
+profile_label.pack(side=tk.LEFT, padx=5)
+
+# Combobox để chọn hoặc nhập profile
+profile_var = tk.StringVar()
+profile_dropdown = ttk.Combobox(profile_frame, textvariable=profile_var)
+profile_dropdown['values'] = profiles
+profile_dropdown.pack(side=tk.LEFT, padx=5)
+
+# Nút Mở Chrome và thêm đường dẫn nếu cần
+open_button = ttk.Button(profile_frame, text="Mở Chrome", command=open_chrome_and_add_profile)
+open_button.pack(side=tk.LEFT, padx=5)
+
+# Gắn sự kiện Enter cho Combobox
+profile_dropdown.bind('<Return>', open_chrome_on_enter)
+
+# Nút Đăng Nhập Google cho Combobox
+login_button_combobox = ttk.Button(profile_frame, text="Đăng Nhập Google", command=login_google_from_combobox)
+login_button_combobox.pack(side=tk.LEFT, padx=5)
+
+# Nút Đóng Chrome
+close_button = ttk.Button(profile_frame, text="Đóng Chrome", command=close_chrome)
+close_button.pack(side=tk.LEFT, padx=5)
+
+# Frame chứa các nút và Listbox
+listbox_frame = ttk.Frame(root)
+listbox_frame.pack(pady=10, fill=tk.X)
+
 # Hàm để mở profile từ Listbox
 def open_profile_from_listbox(event=None):
     index = profiles_listbox.curselection()
@@ -199,9 +262,27 @@ def update_listbox():
     for profile in sorted(profiles):
         profiles_listbox.insert(tk.END, profile)
 
-# --------------------------------
-# End Chrome profile configuration
-# --------------------------------
+# Label cho danh sách profiles
+profiles_label = ttk.Label(listbox_frame, text="Danh sách Profiles:")
+profiles_label.pack(side=tk.LEFT, padx=5)
+
+# Listbox để hiển thị danh sách profiles
+profiles_listbox = tk.Listbox(listbox_frame, selectmode=tk.SINGLE, height=5)
+profiles_listbox.pack(side=tk.LEFT, padx=5)
+
+# Thêm các profile vào Listbox
+update_listbox()
+
+# Xử lý sự kiện nhấp đúp vào một profile trong Listbox
+profiles_listbox.bind('<Double-Button-1>', open_profile_from_listbox)
+
+# Tạo frame chứa các nút đăng nhập và mở toàn bộ chrome
+listbox_login_frame = ttk.Frame(listbox_frame)
+listbox_login_frame.pack(padx=5, pady=5, fill=tk.X)
+
+# Nút Đăng Nhập Google cho Listbox
+login_button_listbox = ttk.Button(listbox_login_frame, text="Đăng Nhập Google (Danh sách)", command=login_google_from_listbox)
+login_button_listbox.pack(side=tk.LEFT, padx=5)
 
 # Hàm để mở toàn bộ Chrome với các profile
 def open_all_chrome_profiles():
@@ -216,107 +297,13 @@ def open_all_chrome_profiles():
         profile_directory = f"--profile-directory=Profile {profile}"
         subprocess.Popen([chrome_path, profile_directory])
 
-# Hàm để mở URL với toàn bộ Chrome profiles
-def open_url_all_profiles():
-    chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
-    if 'chrome.exe' not in chrome_path.lower():
-        chrome_path = os.path.join(chrome_path, 'chrome.exe')
-    if not profiles:
-        print("Không có profile nào để mở.")
-        return
-    
-    selected_url_index = urls_listbox.curselection()
-    if selected_url_index:
-        selected_url = urls_listbox.get(selected_url_index[0])
-        for profile in profiles:
-            profile_directory = f"--profile-directory=Profile {profile}"
-            subprocess.Popen([chrome_path, profile_directory, selected_url])
-    else:
-        print("Vui lòng chọn một URL từ danh sách")
-
-# Hàm để xử lý khi nhấn Enter trên Combobox để mở Chrome
-def open_chrome_on_enter(event=None):
-    if event and event.keysym == 'Return':
-        open_chrome_and_add_profile()
-
-# Tạo cửa sổ chính
-root = tk.Tk()
-root.title("Profiles Google Chrome")
-
-# Tạo frame chứa Combobox và Entry cho đường dẫn Chrome
-chrome_frame = ttk.Frame(root)
-chrome_frame.pack(pady=10, fill=tk.X)
-
-# Label và Combobox cho đường dẫn Chrome
-chrome_path_label = ttk.Label(chrome_frame, text="Chọn hoặc Nhập đường dẫn Chrome:")
-chrome_path_label.pack(side=tk.LEFT, padx=5)
-
-chrome_var = tk.StringVar()
-chrome_var.set(read_chrome_path() or default_chrome_path)
-chrome_dropdown = ttk.Combobox(chrome_frame, textvariable=chrome_var)
-chrome_dropdown['values'] = chrome_paths
-chrome_dropdown.pack(side=tk.LEFT, padx=5)
-
-# Thêm nút để mở thư mục User Data
-open_user_data_button = ttk.Button(chrome_frame, text="Mở User Data", command=open_user_data_folder)
-open_user_data_button.pack(side=tk.LEFT, padx=5)
-
-# Tạo nút để xóa đường dẫn Chrome đã chọn
-delete_chrome_path_button = ttk.Button(chrome_frame, text="Xóa đường dẫn đã chọn", command=delete_selected_chrome_path)
-delete_chrome_path_button.pack(side=tk.LEFT, padx=5)
-
-# Tạo frame chứa Combobox và Entry cho Profile Chrome
-profile_frame = ttk.Frame(root)
-profile_frame.pack(pady=10, fill=tk.X)
-
-# Label cho Combobox và Listbox
-profile_label = ttk.Label(profile_frame, text="Chọn hoặc Nhập Profile:")
-profile_label.pack(side=tk.LEFT, padx=5)
-
-# Combobox để chọn hoặc nhập profile
-profile_var = tk.StringVar()
-profile_dropdown = ttk.Combobox(profile_frame, textvariable=profile_var)
-profile_dropdown['values'] = profiles
-profile_dropdown.pack(side=tk.LEFT, padx=5)
-
-# Nút Mở Chrome và thêm đường dẫn nếu cần
-open_button = ttk.Button(profile_frame, text="Mở Chrome", command=open_chrome_and_add_profile)
-open_button.pack(side=tk.LEFT, padx=5)
-
-# Nút Đăng Nhập Google cho Combobox
-login_button_combobox = ttk.Button(profile_frame, text="Đăng Nhập Google", command=login_google_from_combobox)
-login_button_combobox.pack(side=tk.LEFT, padx=5)
-
-# Nút Đóng Chrome
-close_button = ttk.Button(profile_frame, text="Đóng Chrome", command=close_chrome)
-close_button.pack(side=tk.LEFT, padx=5)
-
-# Frame chứa các nút và Listbox
-listbox_frame = ttk.Frame(root)
-listbox_frame.pack(pady=10, fill=tk.X)
-
-# Label cho danh sách profiles
-profiles_label = ttk.Label(listbox_frame, text="Danh sách Profiles:")
-profiles_label.pack(side=tk.LEFT, padx=5)
-
-# Listbox để hiển thị danh sách profiles
-profiles_listbox = tk.Listbox(listbox_frame, selectmode=tk.SINGLE, height=5)
-profiles_listbox.pack(side=tk.LEFT, padx=5)
-
-# Thêm các profile vào Listbox
-update_listbox()
-
-# Tạo frame chứa các nút đăng nhập và mở toàn bộ chrome
-listbox_login_frame = ttk.Frame(listbox_frame)
-listbox_login_frame.pack(padx=5, pady=5, fill=tk.X)
-
-# Nút Đăng Nhập Google cho Listbox
-login_button_listbox = ttk.Button(listbox_login_frame, text="Đăng Nhập Google (Danh sách)", command=login_google_from_listbox)
-login_button_listbox.pack(side=tk.LEFT, padx=5)
-
 # Tạo nút để mở toàn bộ Chrome với các profile
 open_all_chrome_button = ttk.Button(listbox_login_frame, text="Mở Toàn Bộ Chrome", command=open_all_chrome_profiles)
 open_all_chrome_button.pack(side=tk.LEFT, padx=5)
+
+# --------------------------------
+# End Chrome profile configuration
+# --------------------------------
 
 # ---------------------------
 # Start Hàm tương tác profile
@@ -372,19 +359,6 @@ close_button.pack(side=tk.LEFT, padx=5)
 # End tương tác với Profile
 # -------------------------
 
-# Xử lý sự kiện nhấp đúp vào một profile trong Listbox
-profiles_listbox.bind('<Double-Button-1>', open_profile_from_listbox)
-
-# Gắn sự kiện Enter cho Combobox
-profile_dropdown.bind('<Return>', open_chrome_on_enter)
-
-# Lưu trạng thái đường dẫn Chrome khi thoát
-def on_close():
-    save_chrome_path(chrome_var.get())
-    root.destroy()
-
-root.protocol("WM_DELETE_WINDOW", on_close)
-
 # ---------
 # Start URL
 # ---------
@@ -412,13 +386,6 @@ def save_url_to_list_and_file(url):
     else:
         print(f"URL '{url}' đã tồn tại trong danh sách.")
 
-# Hàm để mở URL được chọn trong Chrome
-def open_url(url):
-    chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
-    if 'chrome.exe' not in chrome_path.lower():
-        chrome_path = os.path.join(chrome_path, 'chrome.exe')
-    subprocess.Popen([chrome_path, url])
-
 # Hàm để cập nhật Listbox URLs
 def update_urls_listbox():
     urls_listbox.delete(0, tk.END)
@@ -426,21 +393,21 @@ def update_urls_listbox():
     for url in urls:
         urls_listbox.insert(tk.END, url)
 
-# Hàm để lưu URL mới vào danh sách và cập nhật giao diện
-def add_new_url():
-    new_url = new_url_entry.get().strip()
-    if new_url:
-        save_url_to_list_and_file(new_url)
-        new_url_entry.delete(0, tk.END)  # Xóa nội dung trong trường nhập sau khi lưu
-    else:
-        print("Vui lòng nhập một URL")
-
 # Nút để mở URL từ khung nhập và lưu vào tệp URL
 def open_and_save_url():
     new_url = new_url_entry.get().strip()
     if new_url:
         open_url(new_url)
         save_url_to_list_and_file(new_url)
+    else:
+        print("Vui lòng nhập một URL")
+
+# Hàm để lưu URL mới vào danh sách và cập nhật giao diện
+def add_new_url():
+    new_url = new_url_entry.get().strip()
+    if new_url:
+        save_url_to_list_and_file(new_url)
+        new_url_entry.delete(0, tk.END)  # Xóa nội dung trong trường nhập sau khi lưu
     else:
         print("Vui lòng nhập một URL")
 
@@ -503,6 +470,13 @@ def open_url_from_listbox(event=None):
     else:
         print("Vui lòng chọn một URL từ danh sách")
 
+# Hàm để mở URL được chọn trong Chrome
+def open_url(url):
+    chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
+    if 'chrome.exe' not in chrome_path.lower():
+        chrome_path = os.path.join(chrome_path, 'chrome.exe')
+    subprocess.Popen([chrome_path, url])
+
 # Hàm để xóa các URLs đã chọn từ Listbox
 def delete_selected_urls():
     selected_indices = urls_listbox.curselection()
@@ -514,6 +488,24 @@ def delete_selected_urls():
         update_urls_listbox()
     else:
         print("Vui lòng chọn ít nhất một URL để xóa")
+
+# Hàm để mở URL với toàn bộ Chrome profiles
+def open_url_all_profiles():
+    chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
+    if 'chrome.exe' not in chrome_path.lower():
+        chrome_path = os.path.join(chrome_path, 'chrome.exe')
+    if not profiles:
+        print("Không có profile nào để mở.")
+        return
+    
+    selected_url_index = urls_listbox.curselection()
+    if selected_url_index:
+        selected_url = urls_listbox.get(selected_url_index[0])
+        for profile in profiles:
+            profile_directory = f"--profile-directory=Profile {profile}"
+            subprocess.Popen([chrome_path, profile_directory, selected_url])
+    else:
+        print("Vui lòng chọn một URL từ danh sách")
 
 # Hàm để xóa danh sách URL và cập nhật giao diện
 def clear_urls_list():
@@ -579,6 +571,13 @@ open_url_button.pack(side=tk.LEFT, padx=5, pady=10)
 # ------------------------------------------------------------
 # End Nút để mở các tệp profiles.json, config.json và URL.json
 # ------------------------------------------------------------
+
+# Lưu trạng thái đường dẫn Chrome khi thoát
+def on_close():
+    save_chrome_path(chrome_var.get())
+    root.destroy()
+
+root.protocol("WM_DELETE_WINDOW", on_close)
 
 # Chạy GUI
 root.mainloop()
