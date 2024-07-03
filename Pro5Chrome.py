@@ -41,6 +41,8 @@ def save_chrome_path(chrome_path):
     
     # Kiểm tra nếu đường dẫn Chrome mới khác với đường dẫn hiện tại thì mới lưu lại
     if chrome_path != config.get('chrome_path'):
+        if 'chrome.exe' not in chrome_path.lower():
+            chrome_path = os.path.join(chrome_path, 'chrome.exe')
         config['chrome_path'] = chrome_path
         with open(CONFIG_FILE, 'w') as file:
             json.dump(config, file, indent=4)
@@ -85,12 +87,16 @@ def save_urls(urls):
 # Hàm để mở Chrome với profile được chọn
 def open_chrome(profile):
     chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
+    if 'chrome.exe' not in chrome_path.lower():
+        chrome_path = os.path.join(chrome_path, 'chrome.exe')
     profile_directory = f"--profile-directory=Profile {profile}"
     subprocess.Popen([chrome_path, profile_directory])
 
 # Hàm để mở trang đăng nhập Google trong Chrome
 def login_google(profile):
     chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
+    if 'chrome.exe' not in chrome_path.lower():
+        chrome_path = os.path.join(chrome_path, 'chrome.exe')
     login_url = 'https://myaccount.google.com/'
     profile_directory = f"--profile-directory=Profile {profile}"
     subprocess.Popen([chrome_path, profile_directory, login_url])
@@ -98,6 +104,8 @@ def login_google(profile):
 # Hàm để mở URL được chọn trong Chrome
 def open_url(url):
     chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
+    if 'chrome.exe' not in chrome_path.lower():
+        chrome_path = os.path.join(chrome_path, 'chrome.exe')
     subprocess.Popen([chrome_path, url])
 
 # Hàm để đóng tất cả các tiến trình Chrome
@@ -164,7 +172,8 @@ def update_urls_listbox():
 # Hàm để mở toàn bộ Chrome với các profile
 def open_all_chrome_profiles():
     chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
-    
+    if 'chrome.exe' not in chrome_path.lower():
+        chrome_path = os.path.join(chrome_path, 'chrome.exe')    
     if not profiles:
         print("Không có profile nào để mở.")
         return
@@ -176,7 +185,8 @@ def open_all_chrome_profiles():
 # Hàm để mở URL với toàn bộ Chrome profiles
 def open_url_all_profiles():
     chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
-    
+    if 'chrome.exe' not in chrome_path.lower():
+        chrome_path = os.path.join(chrome_path, 'chrome.exe')
     if not profiles:
         print("Không có profile nào để mở.")
         return
