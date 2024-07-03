@@ -344,6 +344,56 @@ login_button_listbox.pack(side=tk.LEFT, padx=5)
 open_all_chrome_button = ttk.Button(listbox_login_frame, text="Mở Toàn Bộ Chrome", command=open_all_chrome_profiles)
 open_all_chrome_button.pack(side=tk.LEFT, padx=5)
 
+# Hàm tương tác profile
+import pygetwindow as gw
+
+def maximize_selected_chrome():
+    index = profiles_listbox.curselection()
+    if index:
+        selected_profile = profiles_listbox.get(index)
+        chrome_window = gw.getWindowsWithTitle(selected_profile + " - Google Chrome")
+        if chrome_window:
+            chrome_window[0].maximize()
+        else:
+            print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
+
+def minimize_selected_chrome():
+    index = profiles_listbox.curselection()
+    if index:
+        selected_profile = profiles_listbox.get(index)
+        chrome_window = gw.getWindowsWithTitle(selected_profile + " - Google Chrome")
+        if chrome_window:
+            chrome_window[0].minimize()
+        else:
+            print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
+def close_selected_chrome():
+    index = profiles_listbox.curselection()
+    if index:
+        selected_profile = profiles_listbox.get(index)
+        chrome_window = gw.getWindowsWithTitle(selected_profile + " - Google Chrome")
+        if chrome_window:
+            chrome_window[0].close()
+        else:
+            print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
+
+# Tạo frame chứa các nút Phóng to, Thu nhỏ, Đóng
+resize_frame = ttk.Frame(listbox_frame)
+resize_frame.pack(side=tk.LEFT, padx=5)
+
+# Gắn nút "Phóng to" với hàm maximize_selected_chrome
+maximize_button = ttk.Button(resize_frame, text="Phóng to", command=maximize_selected_chrome)
+maximize_button.pack(side=tk.LEFT, padx=5)
+
+# Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
+minimize_button = ttk.Button(resize_frame, text="Thu nhỏ", command=minimize_selected_chrome)
+minimize_button.pack(side=tk.LEFT, padx=5)
+
+# Gắn nút "Đóng" với hàm close_selected_chrome
+close_button = ttk.Button(resize_frame, text="Đóng", command=close_selected_chrome)
+close_button.pack(side=tk.LEFT, padx=5)
+
+# Kết thúc tương tác với Profile
+
 # Xử lý sự kiện nhấp đúp vào một profile trong Listbox
 profiles_listbox.bind('<Double-Button-1>', open_profile_from_listbox)
 
