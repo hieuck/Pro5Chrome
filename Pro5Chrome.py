@@ -4,23 +4,18 @@ import subprocess
 import json
 import os
 
+# -----------------------------------------------------------------
+# --------------------Copyright (c) 2024 hieuck--------------------
+# -----------------------------------------------------------------
+
 # Đường dẫn tệp profiles.json, config.json và URL.json trong cùng thư mục với file .py
 PROFILE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'profiles.json')
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 URL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'URL.json')
 
-# Hàm để đọc danh sách profiles từ tệp
-def read_profiles():
-    if os.path.exists(PROFILE_FILE):
-        with open(PROFILE_FILE, 'r') as file:
-            return json.load(file)
-    else:
-        return []
-
-# Hàm để lưu danh sách profiles vào tệp
-def save_profiles(profiles):
-    with open(PROFILE_FILE, 'w') as file:
-        json.dump(profiles, file, indent=4)
+# --------------------
+# Chrome configuration
+# --------------------
 
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
@@ -80,6 +75,54 @@ def delete_selected_chrome_path():
         chrome_dropdown['values'] = chrome_paths
         chrome_var.set(chrome_paths[0] if chrome_paths else default_chrome_path)
 
+# --------------------
+# Chrome configuration
+# --------------------
+
+# ----------------------------
+# Chrome profile configuration
+# ----------------------------
+
+# Hàm để đọc danh sách profiles từ tệp
+def read_profiles():
+    if os.path.exists(PROFILE_FILE):
+        with open(PROFILE_FILE, 'r') as file:
+            return json.load(file)
+    else:
+        return []
+
+# Hàm để lưu danh sách profiles vào tệp
+def save_profiles(profiles):
+    with open(PROFILE_FILE, 'w') as file:
+        json.dump(profiles, file, indent=4)
+
+# Hàm để mở Chrome và thêm profile nếu chưa tồn tại, sau đó mở Chrome
+def open_chrome_and_add_profile():
+    selected_profile = profile_var.get()
+    if selected_profile:
+        if selected_profile not in profiles:
+            profiles.append(selected_profile)
+            profiles.sort()  # Sắp xếp theo thứ tự ABC
+            save_profiles(profiles)
+            profile_dropdown['values'] = profiles
+            update_listbox()
+        
+        # Lưu đường dẫn Chrome vào danh sách và config
+        new_chrome_path = chrome_var.get()
+        if new_chrome_path and new_chrome_path not in chrome_paths:
+            chrome_paths.append(new_chrome_path)
+            chrome_paths.sort()  # Sắp xếp theo thứ tự ABC
+            save_chrome_paths_to_config()
+            chrome_dropdown['values'] = chrome_paths
+        
+        open_chrome(selected_profile)
+    else:
+        print("Vui lòng chọn hoặc nhập một profile")
+
+# ----------------------------
+# Chrome profile configuration
+# ----------------------------
+
 # Hàm để đọc danh sách URL từ tệp
 def read_urls():
     if os.path.exists(URL_FILE):
@@ -126,29 +169,6 @@ def close_chrome():
             os.system("pkill chrome")
     except Exception as e:
         print(f"Đã xảy ra lỗi khi đóng Chrome: {e}")
-
-# Hàm để mở Chrome và thêm profile nếu chưa tồn tại, sau đó mở Chrome
-def open_chrome_and_add_profile():
-    selected_profile = profile_var.get()
-    if selected_profile:
-        if selected_profile not in profiles:
-            profiles.append(selected_profile)
-            profiles.sort()  # Sắp xếp theo thứ tự ABC
-            save_profiles(profiles)
-            profile_dropdown['values'] = profiles
-            update_listbox()
-        
-        # Lưu đường dẫn Chrome vào danh sách và config
-        new_chrome_path = chrome_var.get()
-        if new_chrome_path and new_chrome_path not in chrome_paths:
-            chrome_paths.append(new_chrome_path)
-            chrome_paths.sort()  # Sắp xếp theo thứ tự ABC
-            save_chrome_paths_to_config()
-            chrome_dropdown['values'] = chrome_paths
-        
-        open_chrome(selected_profile)
-    else:
-        print("Vui lòng chọn hoặc nhập một profile")
 
 # Hàm để lưu URL mới vào danh sách và `URL.json`, chỉ lưu khi URL là mới
 def save_url_to_list_and_file(url):
