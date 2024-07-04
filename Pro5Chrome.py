@@ -341,16 +341,21 @@ def copy_selected_profile():
         selected_profile = profiles_listbox.get(selected_index)
         pyperclip.copy(selected_profile)
 
-# Hàm để xóa tên profile được chọn trong Listbox
-def delete_selected_item():
+# Hàm để xóa profile được chọn trong Listbox và cập nhật giao diện
+def delete_selected_profile():
     selected_index = profiles_listbox.curselection()
     if selected_index:
+        selected_profile = profiles_listbox.get(selected_index)
         profiles_listbox.delete(selected_index)
+        profiles.remove(selected_profile)
+        save_profiles(profiles)
+    else:
+        print("Vui lòng chọn một profile từ danh sách")
 
 # Tạo menu ngữ cảnh
 context_menu = Menu(root, tearoff=0)
 context_menu.add_command(label="Copy tên profile", command=lambda: copy_selected_profile())
-context_menu.add_command(label="Xóa mục", command=delete_selected_item)
+context_menu.add_command(label="Xóa profile", command=delete_selected_profile)
 
 # Gán sự kiện chuột phải vào Listbox
 profiles_listbox.bind("<Button-3>", on_right_click)
