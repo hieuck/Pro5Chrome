@@ -44,7 +44,6 @@ def read_config_file():
         return None
     except json.JSONDecodeError as e:
         print(f"Lỗi giải mã tệp JSON: {e}")
-        handle_json_error()
         return None
     except Exception as e:
         print(f"Lỗi khi đọc tệp: {e}")
@@ -53,32 +52,40 @@ def read_config_file():
 # Hàm xử lý lỗi JSON
 def handle_json_error():
     print("Xử lý lỗi JSON...")
-    # Thực hiện các thao tác để xử lý lỗi JSON tại đây
     try:
         os.remove(CONFIG_FILE)  # Xóa tệp config.json khi gặp lỗi JSON
         print(f"Đã xóa {CONFIG_FILE} do lỗi JSON.")
         
-        # Sau khi xóa, tạo lại tệp config.json với dữ liệu mặc định nếu cần
+        # Tạo lại tệp config.json với dữ liệu mặc định
         default_config = {'chrome_path': default_chrome_path}
         with open(CONFIG_FILE, 'w') as file:
             json.dump(default_config, file, indent=4)
+            print(f"Đã tạo lại tệp {CONFIG_FILE} với dữ liệu mặc định.")
+        
+        # Trả về cấu hình mặc định
+        return default_config
 
-        # Bây giờ thử đọc lại config.json để đảm bảo nó tồn tại và được cập nhật
-        config_data = read_config_file()
-        if config_data:
-            print("Đã đọc lại dữ liệu từ tệp config.json sau khi xử lý lỗi.")
-        else:
-            print("Không thể đọc lại dữ liệu từ tệp config.json sau khi xử lý lỗi.")
-            
     except Exception as e:
         print(f"Lỗi khi xử lý lỗi JSON: {e}")
+        return None
 
 # Sử dụng hàm để đọc tệp config.json
 config_data = read_config_file()
-if config_data:
-    print("Đã đọc dữ liệu từ tệp config.json.")
-else:
-    print("Không thể đọc dữ liệu từ tệp config.json.")
+
+# Nếu gặp lỗi giải mã JSON, xử lý lỗi và tạo lại tệp
+if config_data is None:
+    config_data = handle_json_error()
+
+# Kiểm tra dữ liệu cấu hình và thực hiện các thao tác cần thiết
+try:
+    if config_data:
+        print("Đã đọc dữ liệu từ tệp config.json.")
+        chrome_path = config_data.get('chrome_path', default_chrome_path)
+        print(f"Đường dẫn Chrome từ config: {chrome_path}")
+    else:
+        print("Không có dữ liệu hợp lệ từ config.json sau khi xử lý lỗi.")
+except Exception as e:
+    print(f"Lỗi khi xử lý: {e}")
 
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
