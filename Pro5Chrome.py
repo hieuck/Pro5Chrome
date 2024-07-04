@@ -31,37 +31,45 @@ def read_config_file():
             config = json.load(file)
             return config
     except FileNotFoundError:
-        print(f"File not found: {CONFIG_FILE}")
+        print(f"Không tìm thấy tệp: {CONFIG_FILE}")
         return None
     except json.JSONDecodeError as e:
-        print(f"Error decoding JSON file: {e}")
+        print(f"Lỗi giải mã tệp JSON: {e}")
+        handle_json_error()
         return None
     except Exception as e:
-        print(f"Error reading file: {e}")
+        print(f"Lỗi khi đọc tệp: {e}")
         return None
+
+# Hàm xử lý lỗi JSON
+def handle_json_error():
+    print("Xử lý lỗi JSON...")
+    # Thực hiện các thao tác để xử lý lỗi JSON tại đây
+    try:
+        os.remove(CONFIG_FILE)  # Xóa tệp config.json khi gặp lỗi JSON
+        print(f"Đã xóa {CONFIG_FILE} do lỗi JSON.")
+        
+        # Sau khi xóa, tạo lại tệp config.json với dữ liệu mặc định nếu cần
+        default_config = {'chrome_path': default_chrome_path}
+        with open(CONFIG_FILE, 'w') as file:
+            json.dump(default_config, file, indent=4)
+            
+        # Bây giờ thử đọc lại config.json để đảm bảo nó tồn tại và được cập nhật
+        config_data = read_config_file()
+        if config_data:
+            print("Đã đọc lại dữ liệu từ tệp config.json sau khi xử lý lỗi")
+        else:
+            print("Không thể đọc lại dữ liệu từ tệp config.json sau khi xử lý lỗi.")
+            
+    except Exception as e:
+        print(f"Lỗi khi xử lý lỗi JSON: {e}")
 
 # Sử dụng hàm để đọc tệp config.json
 config_data = read_config_file()
 if config_data:
-    print("Đã đọc dữ liệu từ tệp config.json:")
-    print(config_data)
+    print("Đã đọc dữ liệu từ tệp config.json")
 else:
     print("Không thể đọc dữ liệu từ tệp config.json.")
-def write_config_file(data):
-    try:
-        with open(CONFIG_FILE, 'w') as file:
-            json.dump(data, file, indent=4)
-        print(f"Dữ liệu đã được ghi vào tệp {CONFIG_FILE}")
-    except Exception as e:
-        print(f"Error writing file: {e}")
-
-# Dữ liệu mẫu để ghi vào tệp config.json
-sample_data = {
-    'chrome_path': 'C:/Program Files/Google/Chrome/Application/chrome.exe'
-}
-
-# Sử dụng hàm để ghi dữ liệu vào tệp config.json
-write_config_file(sample_data)
 
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
@@ -84,23 +92,29 @@ else:
 def save_chrome_path(chrome_path):
     # Đọc cấu hình hiện tại từ file
     config = {}
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as file:
-            config = json.load(file)
+    try:
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as file:
+                config = json.load(file)
 
-    # Kiểm tra nếu đường dẫn Chrome mới khác với đường dẫn hiện tại thì mới lưu lại
-    if chrome_path != config.get('chrome_path'):
-        if 'chrome.exe' not in chrome_path.lower():
-            chrome_path = os.path.join(chrome_path, 'chrome.exe')
-        config['chrome_path'] = chrome_path
-        with open(CONFIG_FILE, 'w') as file:
-            json.dump(config, file, indent=4)
+        # Kiểm tra nếu đường dẫn Chrome mới khác với đường dẫn hiện tại thì mới lưu lại
+        if chrome_path != config.get('chrome_path'):
+            if 'chrome.exe' not in chrome_path.lower():
+                chrome_path = os.path.join(chrome_path, 'chrome.exe')
+            config['chrome_path'] = chrome_path
+            with open(CONFIG_FILE, 'w') as file:
+                json.dump(config, file, indent=4)
+
+    except PermissionError as e:
+        print(f"Không có quyền truy cập để ghi vào {CONFIG_FILE}: {e}")
+    except Exception as e:
+        print(f"Lỗi khi lưu đường dẫn Chrome: {e}")
 
 # Hàm để mở thư mục User Data
 def open_user_data_folder():
     chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
     
-    print(f"Chrome path used: {chrome_path}")
+    print(f"Đường dẫn Chrome đã sử dụng: {chrome_path}")
     
     if 'google' in chrome_path.lower():
         user_data_path = os.path.join(os.getenv('LOCALAPPDATA'), 'Google', 'Chrome', 'User Data')
