@@ -48,7 +48,7 @@ def save_chrome_path(chrome_path):
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r') as file:
             config = json.load(file)
-    
+
     # Kiểm tra nếu đường dẫn Chrome mới khác với đường dẫn hiện tại thì mới lưu lại
     if chrome_path != config.get('chrome_path'):
         if 'chrome.exe' not in chrome_path.lower():
