@@ -24,6 +24,45 @@ URL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'URL.json')
 # Đường dẫn Chrome mặc định nếu không có trong config
 default_chrome_path = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 
+# Hàm xử lý config.json
+def read_config_file():
+    try:
+        with open(CONFIG_FILE, 'r') as file:
+            config = json.load(file)
+            return config
+    except FileNotFoundError:
+        print(f"File not found: {CONFIG_FILE}")
+        return None
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON file: {e}")
+        return None
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        return None
+
+# Sử dụng hàm để đọc tệp config.json
+config_data = read_config_file()
+if config_data:
+    print("Đã đọc dữ liệu từ tệp config.json:")
+    print(config_data)
+else:
+    print("Không thể đọc dữ liệu từ tệp config.json.")
+def write_config_file(data):
+    try:
+        with open(CONFIG_FILE, 'w') as file:
+            json.dump(data, file, indent=4)
+        print(f"Dữ liệu đã được ghi vào tệp {CONFIG_FILE}")
+    except Exception as e:
+        print(f"Error writing file: {e}")
+
+# Dữ liệu mẫu để ghi vào tệp config.json
+sample_data = {
+    'chrome_path': 'C:/Program Files/Google/Chrome/Application/chrome.exe'
+}
+
+# Sử dụng hàm để ghi dữ liệu vào tệp config.json
+write_config_file(sample_data)
+
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
     if os.path.exists(CONFIG_FILE):
