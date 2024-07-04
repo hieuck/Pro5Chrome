@@ -273,6 +273,16 @@ profiles_listbox.pack(side=tk.LEFT, padx=5)
 # Thêm các profile vào Listbox
 update_listbox()
 
+# Hàm để chọn profile khi click chuột trái vào Listbox
+def on_left_click(event):
+    # Xác định vị trí của con trỏ chuột
+    listbox_index = profiles_listbox.nearest(event.y)
+    # Đưa profile Combo box	
+    profile_var.set(profiles_listbox.get(listbox_index))
+
+# Thêm sự kiện chuột trái vào Listbox
+profiles_listbox.bind('<Button-1>', on_left_click)
+
 # Xử lý sự kiện nhấp đúp vào một profile trong Listbox
 profiles_listbox.bind('<Double-Button-1>', open_profile_from_listbox)
 
@@ -308,6 +318,7 @@ open_all_chrome_button.pack(side=tk.LEFT, padx=5)
 # -----------------
 # Start Right Click
 # -----------------
+
 import pyperclip  # Thư viện để thao tác với clipboard
 
 # Hàm để xử lý sự kiện chuột phải vào Listbox
@@ -319,7 +330,7 @@ def on_right_click(event):
     profiles_listbox.selection_clear(0, tk.END)
     profiles_listbox.selection_set(listbox_index)
     profiles_listbox.activate(listbox_index)
-
+ 
     # Hiển thị menu ngữ cảnh tại vị trí con trỏ chuột
     context_menu.post(event.x_root, event.y_root)
 
