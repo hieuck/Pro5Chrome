@@ -1,8 +1,17 @@
 import tkinter as tk
 from tkinter import ttk, Menu
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import subprocess
 import json
 import os
+import time
 
 # -----------------------------------------------------------------
 # --------------------Copyright (c) 2024 hieuck--------------------
@@ -53,11 +62,11 @@ def handle_json_error():
         default_config = {'chrome_path': default_chrome_path}
         with open(CONFIG_FILE, 'w') as file:
             json.dump(default_config, file, indent=4)
-            
+
         # Bây giờ thử đọc lại config.json để đảm bảo nó tồn tại và được cập nhật
         config_data = read_config_file()
         if config_data:
-            print("Đã đọc lại dữ liệu từ tệp config.json sau khi xử lý lỗi")
+            print("Đã đọc lại dữ liệu từ tệp config.json sau khi xử lý lỗi.")
         else:
             print("Không thể đọc lại dữ liệu từ tệp config.json sau khi xử lý lỗi.")
             
@@ -67,7 +76,7 @@ def handle_json_error():
 # Sử dụng hàm để đọc tệp config.json
 config_data = read_config_file()
 if config_data:
-    print("Đã đọc dữ liệu từ tệp config.json")
+    print("Đã đọc dữ liệu từ tệp config.json.")
 else:
     print("Không thể đọc dữ liệu từ tệp config.json.")
 
@@ -706,15 +715,6 @@ open_url_button.pack(side=tk.LEFT, padx=5, pady=10)
 # ----------------------------------
 # -------------Selenium-------------
 # ----------------------------------
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import time
 
 # Định nghĩa biến global cho driver và selected_profile
 driver = None
