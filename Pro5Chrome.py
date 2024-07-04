@@ -178,7 +178,7 @@ def login_google(profile):
     chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
     if 'chrome.exe' not in chrome_path.lower():
         chrome_path = os.path.join(chrome_path, 'chrome.exe')
-    login_url = 'https://myaccount.google.com/'
+    login_url = 'https://accounts.google.com/'
     profile_directory = f"--profile-directory=Profile {profile}"
     subprocess.Popen([chrome_path, profile_directory, login_url])
 
@@ -368,7 +368,14 @@ def maximize_selected_chrome():
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
-        chrome_window = gw.getWindowsWithTitle(selected_profile + " - Google Chrome")
+        # login_google(selected_profile)
+
+        # Kiểm tra lần lượt các tiêu đề cửa sổ
+        chrome_window = (
+            gw.getWindowsWithTitle(selected_profile + " - Google Chrome") or
+            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Google Chrome") or
+            gw.getWindowsWithTitle("Tài khoản Google" + " - Google Chrome")
+        )
         if chrome_window:
             chrome_window[0].maximize()
         else:
@@ -378,16 +385,27 @@ def minimize_selected_chrome():
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
-        chrome_window = gw.getWindowsWithTitle(selected_profile + " - Google Chrome")
+        
+        # Kiểm tra lần lượt các tiêu đề cửa sổ
+        chrome_window = (
+            gw.getWindowsWithTitle(selected_profile + " - Google Chrome") or
+            gw.getWindowsWithTitle("Thẻ mới - Google Chrome")
+        )
         if chrome_window:
             chrome_window[0].minimize()
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
+
 def close_selected_chrome():
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
-        chrome_window = gw.getWindowsWithTitle(selected_profile + " - Google Chrome")
+        
+        # Kiểm tra lần lượt các tiêu đề cửa sổ
+        chrome_window = (
+            gw.getWindowsWithTitle(selected_profile + " - Google Chrome") or
+            gw.getWindowsWithTitle("Thẻ mới - Google Chrome")
+        )
         if chrome_window:
             chrome_window[0].close()
         else:
