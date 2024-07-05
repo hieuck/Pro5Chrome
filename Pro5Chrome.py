@@ -477,7 +477,7 @@ def minimize_selected_chrome():
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
 
-def restore_selectd_chrome():
+def restore_selected_chrome():
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
@@ -485,18 +485,20 @@ def restore_selectd_chrome():
         # Tìm cửa sổ Chrome hoặc CentBrowser
         chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
-            try:
-                # Kiểm tra trạng thái của cửa sổ
-                if chrome_window.isMinimized or chrome_window.isMaximized:
-                    chrome_window.restore()
-                    # print(f"Đã khôi phục cửa sổ cho hồ sơ '{selected_profile}'")
-                else:
-                    print(f"Cửa sổ cho hồ sơ '{selected_profile}' không ở trạng thái minimized hoặc maximized.")
-            except Exception as e:
+            # Kiểm tra xem cửa sổ đang minimized hay không active
+            if chrome_window.isMinimized:
                 chrome_window.restore()
-                print(f"Lỗi khi thực hiện khôi phục cửa sổ: {e}")
+                chrome_window.activate()
+                print(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ '{selected_profile}'")
+            elif not chrome_window.isActive:
+                chrome_window.activate()
+                print(f"Đã kích hoạt cửa sổ cho hồ sơ '{selected_profile}'")
+            else:
+                print(f"Cửa sổ cho hồ sơ '{selected_profile}' đã hoạt động trước đó.")
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
+    else:
+        print("Vui lòng chọn một hồ sơ để khôi phục.")
 
 def close_selected_chrome():
     index = profiles_listbox.curselection()
@@ -510,6 +512,32 @@ def close_selected_chrome():
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
 
+import pygetwindow as gw
+
+def close_latest_chrome():
+    # Tên cửa sổ chính của chương trình của bạn
+    main_window_title = root.title()
+
+    # Tìm tất cả các cửa sổ của Chrome và CentBrowser
+    chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
+
+    if chrome_windows:
+        # Sắp xếp các cửa sổ theo thứ tự đảo ngược của thứ tự chúng được mở
+        chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
+
+        # Kiểm tra xem cửa sổ đầu tiên có phải là cửa sổ chính của chương trình không
+        if chrome_windows[0].title != main_window_title:
+            chrome_windows[0].close()
+            print("Đã đóng cửa sổ gần nhất của Chrome hoặc CentBrowser.")
+        else:
+            print("Cửa sổ gần nhất là cửa sổ chính của chương trình, không thể đóng.")
+            if len(chrome_windows) > 1:
+                chrome_windows[1].close()
+                print("Đã đóng cửa sổ thay thế.")
+            else:
+                print("Không có cửa sổ thay thế để đóng.")
+    else:
+        print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào để đóng.")
 
 # Tạo frame chứa các nút Phóng to, Thu nhỏ, Khôi Phục, Đóng
 resize_frame = ttk.Frame(listbox_frame)
@@ -523,13 +551,17 @@ maximize_button.pack(side=tk.LEFT, padx=5)
 minimize_button = ttk.Button(resize_frame, text="Thu nhỏ", command=minimize_selected_chrome)
 minimize_button.pack(side=tk.LEFT, padx=5)
 
-# Gắn nút "Khôi Phục" với hàm restore_selectd_chrome
-restore_button = ttk.Button(resize_frame, text="Khôi Phục", command=restore_selectd_chrome)
+# Gắn nút "Khôi Phục" với hàm restore_selected_chrome
+restore_button = ttk.Button(resize_frame, text="Khôi Phục", command=restore_selected_chrome)
 restore_button.pack(side=tk.LEFT, padx=5)
 
 # Gắn nút "Đóng" với hàm close_selected_chrome
 close_button = ttk.Button(resize_frame, text="Đóng", command=close_selected_chrome)
 close_button.pack(side=tk.LEFT, padx=5)
+
+# Gắn nút "Đóng cửa sổ gần nhất" với hàm close_latest_chrome
+close_latest_button = ttk.Button(resize_frame, text="Đóng cửa sổ gần nhất", command=close_latest_chrome)
+close_latest_button.pack(side=tk.LEFT, padx=5)
 
 # -------------------------
 # End tương tác với Profile
