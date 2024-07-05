@@ -438,23 +438,30 @@ profiles_listbox.bind("<Button-3>", on_right_click)
 # ---------------------------
 import pygetwindow as gw
 
+# def list_all_windows():
+#     all_windows = gw.getAllTitles()
+#     for i, window_title in enumerate(all_windows):
+#         print(f"{i}: {window_title}")
+
+# Ví dụ gọi hàm để liệt kê tất cả các cửa sổ đang mở
+# list_all_windows()
+
+def find_chrome_window(profile_name):
+    all_windows = gw.getAllTitles()
+    for window_title in all_windows:
+        if profile_name in window_title or "- Google Chrome" in window_title or "- Cent Browser" in window_title:
+            return gw.getWindowsWithTitle(window_title)[0]
+    return None
+
 def maximize_selected_chrome():
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
-        # login_google(selected_profile)
-
-        # Kiểm tra lần lượt các tiêu đề cửa sổ
-        chrome_window = (
-            gw.getWindowsWithTitle(selected_profile + " - Google Chrome") or
-            gw.getWindowsWithTitle(selected_profile + " - Cent Browser") or
-            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Google Chrome") or
-            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Cent Browser") or
-            gw.getWindowsWithTitle("Tài khoản Google" + " - Google Chrome") or
-            gw.getWindowsWithTitle("Tài khoản Google" + " - Cent Browser")
-        )
+        
+        # Tìm cửa sổ Chrome hoặc CentBrowser
+        chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
-            chrome_window[0].maximize()
+            chrome_window.maximize()
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
 
@@ -463,19 +470,22 @@ def minimize_selected_chrome():
     if index:
         selected_profile = profiles_listbox.get(index)
         
-        # Kiểm tra lần lượt các tiêu đề cửa sổ
-        chrome_window = (
-            gw.getWindowsWithTitle(selected_profile + " - Google Chrome") or
-            gw.getWindowsWithTitle(selected_profile + " - Cent Browser") or
-            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Google Chrome") or
-            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Cent Browser") or
-            gw.getWindowsWithTitle("Tài khoản Google" + " - Google Chrome") or
-            gw.getWindowsWithTitle("Tài khoản Google" + " - Cent Browser") or
-            gw.getWindowsWithTitle("Thẻ mới - Google Chrome") or
-            gw.getWindowsWithTitle("Thẻ mới - Cent Browser")
-        )
+        # Tìm cửa sổ Chrome hoặc CentBrowser
+        chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
-            chrome_window[0].minimize()
+            chrome_window.minimize()
+        else:
+            print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
+
+def restore_selectd_chrome():
+    index = profiles_listbox.curselection()
+    if index:
+        selected_profile = profiles_listbox.get(index)
+        
+        # Tìm cửa sổ Chrome hoặc CentBrowser
+        chrome_window = find_chrome_window(selected_profile)
+        if chrome_window:
+            chrome_window.restore()
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
 
@@ -484,23 +494,15 @@ def close_selected_chrome():
     if index:
         selected_profile = profiles_listbox.get(index)
         
-        # Kiểm tra lần lượt các tiêu đề cửa sổ
-        chrome_window = (
-            gw.getWindowsWithTitle(selected_profile + " - Google Chrome") or
-            gw.getWindowsWithTitle(selected_profile + " - Cent Browser") or
-            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Google Chrome") or
-            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Cent Browser") or
-            gw.getWindowsWithTitle("Tài khoản Google" + " - Google Chrome") or
-            gw.getWindowsWithTitle("Tài khoản Google" + " - Cent Browser") or
-            gw.getWindowsWithTitle("Thẻ mới - Google Chrome") or
-            gw.getWindowsWithTitle("Thẻ mới - Cent Browser")
-        )
+        # Tìm cửa sổ Chrome hoặc CentBrowser
+        chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
-            chrome_window[0].close()
+            chrome_window.close()
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
 
-# Tạo frame chứa các nút Phóng to, Thu nhỏ, Đóng
+
+# Tạo frame chứa các nút Phóng to, Thu nhỏ, Khôi Phục, Đóng
 resize_frame = ttk.Frame(listbox_frame)
 resize_frame.pack(side=tk.LEFT, padx=5)
 
@@ -511,6 +513,10 @@ maximize_button.pack(side=tk.LEFT, padx=5)
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
 minimize_button = ttk.Button(resize_frame, text="Thu nhỏ", command=minimize_selected_chrome)
 minimize_button.pack(side=tk.LEFT, padx=5)
+
+# Gắn nút "Khôi Phục" với hàm restore_selectd_chrome
+restore_button = ttk.Button(resize_frame, text="Khôi Phục", command=restore_selectd_chrome)
+restore_button.pack(side=tk.LEFT, padx=5)
 
 # Gắn nút "Đóng" với hàm close_selected_chrome
 close_button = ttk.Button(resize_frame, text="Đóng", command=close_selected_chrome)
