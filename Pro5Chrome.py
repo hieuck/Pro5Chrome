@@ -485,7 +485,16 @@ def restore_selectd_chrome():
         # Tìm cửa sổ Chrome hoặc CentBrowser
         chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
-            chrome_window.restore()
+            try:
+                # Kiểm tra trạng thái của cửa sổ
+                if chrome_window.isMinimized or chrome_window.isMaximized:
+                    chrome_window.restore()
+                    # print(f"Đã khôi phục cửa sổ cho hồ sơ '{selected_profile}'")
+                else:
+                    print(f"Cửa sổ cho hồ sơ '{selected_profile}' không ở trạng thái minimized hoặc maximized.")
+            except Exception as e:
+                chrome_window.restore()
+                print(f"Lỗi khi thực hiện khôi phục cửa sổ: {e}")
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
 
@@ -735,6 +744,31 @@ open_profiles_button.pack(side=tk.LEFT, padx=5, pady=10)
 # Nút để mở URL.json
 open_url_button = ttk.Button(open_buttons_frame, text="Mở URL.json", command=open_url_file)
 open_url_button.pack(side=tk.LEFT, padx=5, pady=10)
+
+import win32gui
+import win32con
+
+# Hàm để đặt cửa sổ luôn hiển thị trên cùng
+def set_always_on_top():
+    hwnd = win32gui.GetForegroundWindow()  # Lấy handle của cửa sổ đang được chọn
+    if always_on_top_var.get():
+        win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        print("Đã đặt ứng dụng luôn hiển thị trên cùng.")
+    else:
+        win32gui.SetWindowPos(hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        print("Đã bỏ đặt ứng dụng luôn hiển thị trên cùng.")
+
+# Hàm xử lý sự kiện khi checkbox thay đổi trạng thái
+def on_checkbox_change():
+    set_always_on_top()
+
+# Tạo checkbox để điều khiển tính năng luôn hiển thị trên cùng
+always_on_top_var = tk.BooleanVar()
+always_on_top_checkbox = ttk.Checkbutton(open_buttons_frame, text="Luôn hiển thị trên cùng", variable=always_on_top_var, command=on_checkbox_change)
+always_on_top_checkbox.pack(side=tk.LEFT, padx=5, pady=10)
+
+# Biến để lưu trạng thái của checkbox
+is_always_on_top = False
 
 # ------------------------------------------------------------
 # End Nút để mở các tệp profiles.json, config.json và URL.json
