@@ -750,7 +750,7 @@ def toggle_always_on_top():
     global is_always_on_top
     is_always_on_top = not is_always_on_top
     root.attributes('-topmost', is_always_on_top)
-    print(f"Đã đặt ứng dụng luôn hiển thị trên cùng: {is_always_on_top}")
+    print(f"Ứng dụng luôn hiển thị trên cùng: {is_always_on_top}")
 
 
 # Hàm xử lý sự kiện khi checkbox thay đổi trạng thái
