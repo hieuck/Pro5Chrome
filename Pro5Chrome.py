@@ -745,18 +745,13 @@ open_profiles_button.pack(side=tk.LEFT, padx=5, pady=10)
 open_url_button = ttk.Button(open_buttons_frame, text="Mở URL.json", command=open_url_file)
 open_url_button.pack(side=tk.LEFT, padx=5, pady=10)
 
-import win32gui
-import win32con
+# Hàm để cập nhật trạng thái always on top
+def toggle_always_on_top():
+    global is_always_on_top
+    is_always_on_top = not is_always_on_top
+    root.attributes('-topmost', is_always_on_top)
+    print(f"Đã đặt ứng dụng luôn hiển thị trên cùng: {is_always_on_top}")
 
-# Hàm để đặt cửa sổ luôn hiển thị trên cùng
-def set_always_on_top():
-    hwnd = win32gui.GetForegroundWindow()  # Lấy handle của cửa sổ đang được chọn
-    if always_on_top_var.get():
-        win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        print("Đã đặt ứng dụng luôn hiển thị trên cùng.")
-    else:
-        win32gui.SetWindowPos(hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0, win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-        print("Đã bỏ đặt ứng dụng luôn hiển thị trên cùng.")
 
 # Hàm xử lý sự kiện khi checkbox thay đổi trạng thái
 def on_checkbox_change():
@@ -764,7 +759,7 @@ def on_checkbox_change():
 
 # Tạo checkbox để điều khiển tính năng luôn hiển thị trên cùng
 always_on_top_var = tk.BooleanVar()
-always_on_top_checkbox = ttk.Checkbutton(open_buttons_frame, text="Luôn hiển thị trên cùng", variable=always_on_top_var, command=on_checkbox_change)
+always_on_top_checkbox = ttk.Checkbutton(open_buttons_frame, text="Luôn hiển thị trên cùng", variable=always_on_top_var, command=toggle_always_on_top)
 always_on_top_checkbox.pack(side=tk.LEFT, padx=5, pady=10)
 
 # Biến để lưu trạng thái của checkbox
