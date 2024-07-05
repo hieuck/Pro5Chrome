@@ -447,8 +447,11 @@ def maximize_selected_chrome():
         # Kiểm tra lần lượt các tiêu đề cửa sổ
         chrome_window = (
             gw.getWindowsWithTitle(selected_profile + " - Google Chrome") or
+            gw.getWindowsWithTitle(selected_profile + " - Cent Browser") or
             gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Google Chrome") or
-            gw.getWindowsWithTitle("Tài khoản Google" + " - Google Chrome")
+            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Cent Browser") or
+            gw.getWindowsWithTitle("Tài khoản Google" + " - Google Chrome") or
+            gw.getWindowsWithTitle("Tài khoản Google" + " - Cent Browser")
         )
         if chrome_window:
             chrome_window[0].maximize()
@@ -463,7 +466,13 @@ def minimize_selected_chrome():
         # Kiểm tra lần lượt các tiêu đề cửa sổ
         chrome_window = (
             gw.getWindowsWithTitle(selected_profile + " - Google Chrome") or
-            gw.getWindowsWithTitle("Thẻ mới - Google Chrome")
+            gw.getWindowsWithTitle(selected_profile + " - Cent Browser") or
+            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Google Chrome") or
+            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Cent Browser") or
+            gw.getWindowsWithTitle("Tài khoản Google" + " - Google Chrome") or
+            gw.getWindowsWithTitle("Tài khoản Google" + " - Cent Browser") or
+            gw.getWindowsWithTitle("Thẻ mới - Google Chrome") or
+            gw.getWindowsWithTitle("Thẻ mới - Cent Browser")
         )
         if chrome_window:
             chrome_window[0].minimize()
@@ -478,7 +487,13 @@ def close_selected_chrome():
         # Kiểm tra lần lượt các tiêu đề cửa sổ
         chrome_window = (
             gw.getWindowsWithTitle(selected_profile + " - Google Chrome") or
-            gw.getWindowsWithTitle("Thẻ mới - Google Chrome")
+            gw.getWindowsWithTitle(selected_profile + " - Cent Browser") or
+            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Google Chrome") or
+            gw.getWindowsWithTitle("Đăng nhập - Tài khoản Google" + " - Cent Browser") or
+            gw.getWindowsWithTitle("Tài khoản Google" + " - Google Chrome") or
+            gw.getWindowsWithTitle("Tài khoản Google" + " - Cent Browser") or
+            gw.getWindowsWithTitle("Thẻ mới - Google Chrome") or
+            gw.getWindowsWithTitle("Thẻ mới - Cent Browser")
         )
         if chrome_window:
             chrome_window[0].close()
