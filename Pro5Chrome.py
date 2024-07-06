@@ -628,23 +628,23 @@ open_all_chrome_button.pack(side=tk.LEFT, anchor='w')
 
 # Gắn nút "Phóng to" với hàm maximize_selected_chrome
 maximize_button = ttk.Button(row2_frame, text="Phóng to", command=maximize_selected_chrome)
-maximize_button.pack(side=tk.LEFT, padx=5, anchor='w')
+maximize_button.pack(side=tk.LEFT, anchor='w')
 
 # Gắn nút "Chuyển Tab" với hàm switch_tab_chrome
 switch_tab_button = ttk.Button(row2_frame, text="Chuyển Tab", command=switch_tab_chrome)
-switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
+switch_tab_button.pack(side=tk.LEFT, anchor='w')
 
 # Gắn nút "Đóng cửa sổ gần nhất" với hàm close_latest_chrome
 close_latest_button = ttk.Button(row2_frame, text="Đóng", command=close_chrome)
-close_latest_button.pack(side=tk.LEFT, padx=5, anchor='w')
+close_latest_button.pack(side=tk.LEFT, anchor='w')
 
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
 minimize_button = ttk.Button(row3_frame, text="Thu nhỏ", command=minimize_selected_chrome)
-minimize_button.pack(side=tk.LEFT, padx=5, anchor='w')
+minimize_button.pack(side=tk.LEFT, anchor='w')
 
 # Gắn nút "Khôi Phục" với hàm restore_selected_chrome
 restore_button = ttk.Button(row3_frame, text="Khôi Phục", command=restore_selected_chrome)
-restore_button.pack(side=tk.LEFT, padx=5, anchor='w')
+restore_button.pack(side=tk.LEFT, anchor='w')
 
 # Frame hiển thị danh sách profile đang mở
 profiles_frame = ttk.Frame(listbox_frame)
