@@ -565,6 +565,8 @@ def maximize_selected_chrome():
         chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
             chrome_window.maximize()
+            # Cập nhật danh sách các cửa sổ đang mở
+            update_profile_listbox()
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
     else:
