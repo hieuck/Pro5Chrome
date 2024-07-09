@@ -135,14 +135,15 @@ def open_user_data_folder():
     if 'google' in chrome_path.lower():
         user_data_path = os.path.join(os.getenv('LOCALAPPDATA'), 'Google', 'Chrome', 'User Data')
     elif 'centbrowser' in chrome_path.lower():
-        chrome_folder_path = os.path.dirname(chrome_path)
-        user_data_path = os.path.join(chrome_folder_path, 'User Data')  # Đường dẫn đến thư mục User Data của Cent Browser
+        if 'chrome' in chrome_path.lower():
+            chrome_folder_path = os.path.dirname(chrome_path)
+            user_data_path = os.path.join(chrome_folder_path, 'User Data')  # Đường dẫn đến thư mục User Data của Cent Browser
         
-        print(f"Cent Browser User Data path: {user_data_path}")
+            print(f"Cent Browser User Data path: {user_data_path}")
         
-        if not os.path.exists(user_data_path):
-            print(f"Thư mục User Data không tồn tại: {user_data_path}")
-            return
+            if not os.path.exists(user_data_path):
+                print(f"Thư mục User Data không tồn tại: {user_data_path}")
+                return
     else:
         print("Không thể mở thư mục User Data cho đường dẫn này.")
         return
@@ -166,8 +167,8 @@ def save_chrome_paths_to_config():
         json.dump(config, file, indent=4)
 
 # Tạo frame chứa Combobox và Entry cho đường dẫn Chrome
-chrome_frame = ttk.Frame(root)
-chrome_frame.pack(pady=10, fill=tk.X)
+chrome_frame = ttk.Frame(root, borderwidth=2, relief="groove")
+chrome_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
 # Label và Combobox cho đường dẫn Chrome
 chrome_path_label = ttk.Label(chrome_frame, text="Chọn hoặc Nhập đường dẫn Chrome:")
@@ -275,37 +276,33 @@ def open_chrome_on_enter(event=None):
         open_chrome_and_add_profile()
 
 # Tạo frame chứa Combobox và Entry cho Profile Chrome
-profile_frame = ttk.Frame(root)
-profile_frame.pack(pady=10, fill=tk.X)
+configs_frame = ttk.Frame(root, borderwidth=2, relief="groove")
+configs_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
 # Label cho Combobox và Listbox
-profile_label = ttk.Label(profile_frame, text="Chọn hoặc Nhập Profile:")
+profile_label = ttk.Label(configs_frame, text="Chọn hoặc Nhập Profile:")
 profile_label.pack(side=tk.LEFT, padx=5)
 
 # Combobox để chọn hoặc nhập profile
 profile_var = tk.StringVar()
-profile_dropdown = ttk.Combobox(profile_frame, textvariable=profile_var)
+profile_dropdown = ttk.Combobox(configs_frame, textvariable=profile_var)
 profile_dropdown['values'] = profiles
 profile_dropdown.pack(side=tk.LEFT, padx=5)
 
 # Nút Mở Chrome và thêm đường dẫn nếu cần
-open_button = ttk.Button(profile_frame, text="Mở Chrome", command=open_chrome_and_add_profile)
+open_button = ttk.Button(configs_frame, text="Mở Chrome", command=open_chrome_and_add_profile)
 open_button.pack(side=tk.LEFT, padx=5)
 
 # Gắn sự kiện Enter cho Combobox
 profile_dropdown.bind('<Return>', open_chrome_on_enter)
 
 # Nút Đăng Nhập Google cho Combobox
-login_button_combobox = ttk.Button(profile_frame, text="Đăng Nhập Google", command=login_google_from_combobox)
+login_button_combobox = ttk.Button(configs_frame, text="Đăng Nhập Google", command=login_google_from_combobox)
 login_button_combobox.pack(side=tk.LEFT, padx=5)
 
 # Nút Đóng Chrome
-close_button = ttk.Button(profile_frame, text="Đóng Chrome", command=close_chrome)
+close_button = ttk.Button(configs_frame, text="Đóng Chrome", command=close_chrome)
 close_button.pack(side=tk.LEFT, padx=5)
-
-# Frame chứa các nút và Listbox
-listbox_frame = ttk.Frame(root)
-listbox_frame.pack()
 
 # Hàm để mở profile từ Listbox
 def open_profile_from_listbox(event=None):
@@ -331,16 +328,20 @@ def update_listbox():
     for profile in sorted(profiles):
         profiles_listbox.insert(tk.END, profile)
 
+# Frame chứa các nút và Listbox
+profiles_frame = ttk.Frame(root, borderwidth=2, relief="groove")
+profiles_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
 # Frame chứa Listbox
-show_listbox_frame = ttk.Frame(listbox_frame)
-show_listbox_frame.pack(side=tk.LEFT)
+show_listbox_frame = ttk.Frame(profiles_frame, borderwidth=2, relief="groove")
+show_listbox_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
 # Label cho danh sách profiles
-profiles_label = ttk.Label(show_listbox_frame, text="Danh sách Profiles:")
+profiles_label = ttk.Label(show_listbox_frame, text="Danh sách Profiles:", font=("Helvetica", 12, "bold"))
 profiles_label.pack(side=tk.TOP, padx=5, pady=5)
 
 # Listbox để hiển thị danh sách profiles
-profiles_listbox = tk.Listbox(show_listbox_frame, selectmode=tk.SINGLE, height=5)
+profiles_listbox = tk.Listbox(show_listbox_frame, selectmode=tk.SINGLE, height=5, font=("Helvetica", 10))
 profiles_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
 # Thêm các profile vào Listbox
@@ -415,6 +416,33 @@ profiles_listbox.bind("<Button-3>", on_right_click)
 # ---------------------------
 # Start Hàm tương tác profile
 # ---------------------------
+import pygetwindow as gw
+import pywinauto
+
+
+def update_profile_listbox():
+    global open_profile_listbox, close_profile_listbox
+    main_window_title = root.title()  # Đảm bảo biến main_window_title đã được định nghĩa
+
+    # Tìm tất cả các cửa sổ Chrome hoặc CentBrowser
+    chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
+    
+    # Loại bỏ cửa sổ chính của chương trình khỏi danh sách
+    chrome_windows = [win for win in chrome_windows if win.title != main_window_title]
+    
+    # Sắp xếp các cửa sổ theo thứ tự đảo ngược của thứ tự chúng được mở
+    chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
+    
+    # Xóa danh sách cũ
+    open_profile_listbox.delete(0, tk.END)
+    close_profile_listbox.delete(0, tk.END)
+
+    # Thêm các cửa sổ Chrome vào ListBox tương ứng
+    for win in chrome_windows:
+        if win.isActive:
+            open_profile_listbox.insert(tk.END, win.title)
+    for win in chrome_windows:
+        close_profile_listbox.insert(tk.END, win.title)
 
 # Hàm để mở toàn bộ Chrome với các profile
 def open_all_chrome_profiles():
@@ -428,24 +456,6 @@ def open_all_chrome_profiles():
     for profile in profiles:
         profile_directory = f"--profile-directory=Profile {profile}"
         subprocess.Popen([chrome_path, profile_directory])
-
-import pygetwindow as gw
-import pywinauto
-
-# Hàm lấy danh sách profile đang mở
-def get_open_profiles():
-    profiles = []
-    chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
-    for window in chrome_windows:
-        profiles.append(window.title)
-    return profiles
-
-# Hàm cập nhật danh sách profile đang mở trong listbox
-def update_profile_listbox():
-    profiles_listbox.delete(0, tk.END)
-    open_profiles = get_open_profiles()
-    for profile in open_profiles:
-        profiles_listbox.insert(tk.END, profile)
 
 def find_chrome_window(profile_name):
     main_window_title = root.title()  # Lấy title của cửa sổ chính của chương trình
@@ -477,6 +487,8 @@ def maximize_selected_chrome():
         chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
             chrome_window.maximize()
+            # Cập nhật danh sách các cửa sổ đang mở
+            update_profile_listbox()
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
     else:
@@ -509,10 +521,14 @@ def restore_selected_chrome():
                 chrome_window.restore()
                 chrome_window.activate()
                 print(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ '{selected_profile}'")
+                # Cập nhật danh sách các cửa sổ đang mở
+                update_profile_listbox()
             elif not chrome_window.isActive:
-                chrome_window.restore()
+                # chrome_window.restore()
                 chrome_window.activate()
                 print(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ gần nhất")
+                # Cập nhật danh sách các cửa sổ đang mở
+                update_profile_listbox()
             else:
                 print(f"Cửa sổ cho hồ sơ gần nhất đã hoạt động trước đó.")
         else:
@@ -520,52 +536,48 @@ def restore_selected_chrome():
     else:
         print("Vui lòng chọn một hồ sơ để khôi phục.")
 
-def close_chrome():
+def close_selected_chrome():
     index = profiles_listbox.curselection()
-    main_window_title = root.title()  # Lấy title của cửa sổ chính của chương trình
-
     if index:
         selected_profile = profiles_listbox.get(index)
         
-        # Tìm cửa sổ Chrome hoặc CentBrowser dựa trên profile
+        # Tìm cửa sổ Chrome hoặc CentBrowser
         chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
-            if window.isActive and window.title != main_window_title:
-                window.close()
-                print(f"Đã đóng cửa sổ cho hồ sơ '{selected_profile}'")
-            #    update_profile_listbox()  # Cập nhật danh sách profile sau khi đóng cửa sổ
-                return
+            chrome_window.close()
+            # Cập nhật danh sách các cửa sổ đang mở
+            update_profile_listbox()
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
-            print(f"Thực hiện đóng hồ sơ gần nhất")
     else:
-        # Tìm tất cả các cửa sổ của Chrome và CentBrowser
-        chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
+        print("Vui lòng chọn một hồ sơ để đóng.")
+        
+def close_latest_chrome():
+    main_window_title = root.title()  # Lấy title của cửa sổ chính của chương trình
+    # Tìm tất cả các cửa sổ của Chrome và CentBrowser
+    chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
 
-        if chrome_windows:
-            # Sắp xếp các cửa sổ theo thứ tự đảo ngược của thứ tự chúng được mở
-            chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
+    if chrome_windows:
+        # Sắp xếp các cửa sổ theo thứ tự đảo ngược của thứ tự chúng được mở
+        chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
 
-            # Lặp qua từng cửa sổ để tìm cửa sổ active để đóng
-            for window in chrome_windows:
-                if window.isActive and window.title != main_window_title:
-                    window.close()
-                    print(f"Đã đóng cửa sổ: {window.title}")
-                    return
-
-            # Nếu không tìm thấy cửa sổ active để đóng, đóng cửa sổ đầu tiên trong danh sách
-            if chrome_windows[0].title != main_window_title:
-                chrome_windows[0].close()
-                print(f"Đã đóng cửa sổ gần nhất của Chrome hoặc CentBrowser.")
-            else:
-                print("Cửa sổ gần nhất là cửa sổ chính của chương trình, không thể đóng.")
-                if len(chrome_windows) > 1:
-                    chrome_windows[1].close()
-                    print("Đã đóng cửa sổ thay thế.")
-                else:
-                    print("Không có cửa sổ thay thế để đóng.")
+        # Kiểm tra xem cửa sổ đầu tiên có phải là cửa sổ chính của chương trình không
+        if chrome_windows[0].title != main_window_title:
+            chrome_windows[0].close()
+            print("Đã đóng cửa sổ gần nhất của Chrome hoặc CentBrowser.")
+            # Cập nhật danh sách các cửa sổ đang mở
+            update_profile_listbox()
         else:
-            print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào để đóng.")
+            print("Cửa sổ gần nhất là cửa sổ chính của chương trình, không thể đóng.")
+            if len(chrome_windows) > 1:
+                chrome_windows[1].close()
+                print("Đã đóng cửa sổ thay thế.")
+                # Cập nhật danh sách các cửa sổ đang mở
+                update_profile_listbox()
+            else:
+                print("Không có cửa sổ thay thế để đóng.")
+    else:
+        print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào để đóng.")
 
 # Biến toàn cục để lưu trữ chỉ số của cửa sổ hiện tại
 current_window_index = 0
@@ -598,65 +610,78 @@ def switch_tab_chrome():
 
             # Tăng chỉ số cửa sổ hiện tại để chuyển sang cửa sổ kế tiếp trong lần nhấn nút tiếp theo
             current_window_index += 1
+            # Cập nhật danh sách các cửa sổ đang mở
+            update_profile_listbox()
         except Exception as e:
             print(f"Lỗi khi chuyển tab: {e}")
     else:
         print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào.")
 
-# Tạo frame chứa các nút Phóng to, Thu nhỏ, Chuyển Tab, Khôi Phục, Đóng, Đóng cửa sổ gần nhất
-resize_frame = ttk.Frame(listbox_frame)
-resize_frame.pack(side=tk.LEFT)
+# Frame chứa các nút điều khiển
+control_frame  = ttk.Frame(profiles_frame)
+control_frame .pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Tạo frame cho hàng đầu tiên
-row1_frame = ttk.Frame(resize_frame)
-row1_frame.pack(side=tk.TOP, anchor='w')
+row1_control_frame = ttk.Frame(control_frame )
+row1_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
 # Tạo frame cho hàng thứ hai
-row2_frame = ttk.Frame(resize_frame)
-row2_frame.pack(side=tk.TOP, anchor='w')
+row2_control_frame = ttk.Frame(control_frame )
+row2_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
-row3_frame = ttk.Frame(resize_frame)
-row3_frame.pack(side=tk.TOP, anchor='w')
+# Tạo frame cho hàng thứ ba
+row3_control_frame = ttk.Frame(control_frame )
+row3_control_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, anchor='w')
 
 # Nút Đăng Nhập Google cho Listbox
-login_button_listbox = ttk.Button(row1_frame, text="Đăng Nhập Google (Danh sách)", command=login_google_from_listbox)
-login_button_listbox.pack(side=tk.LEFT, anchor='w')
+login_button_listbox = ttk.Button(row1_control_frame, text="Đăng Nhập Google (Danh sách)", command=login_google_from_listbox)
+login_button_listbox.pack(side=tk.LEFT, padx=5)
 
 # Tạo nút để mở toàn bộ Chrome với các profile
-open_all_chrome_button = ttk.Button(row1_frame, text="Mở Toàn Bộ Chrome", command=open_all_chrome_profiles)
-open_all_chrome_button.pack(side=tk.LEFT, anchor='w')
+open_all_chrome_button = ttk.Button(row1_control_frame, text="Mở Toàn Bộ Chrome", command=open_all_chrome_profiles)
+open_all_chrome_button.pack(side=tk.LEFT, padx=5)
 
 # Gắn nút "Phóng to" với hàm maximize_selected_chrome
-maximize_button = ttk.Button(row2_frame, text="Phóng to", command=maximize_selected_chrome)
-maximize_button.pack(side=tk.LEFT, anchor='w')
+maximize_button = ttk.Button(row2_control_frame, text="Phóng to", command=maximize_selected_chrome)
+maximize_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Gắn nút "Chuyển Tab" với hàm switch_tab_chrome
-switch_tab_button = ttk.Button(row2_frame, text="Chuyển Tab", command=switch_tab_chrome)
-switch_tab_button.pack(side=tk.LEFT, anchor='w')
+switch_tab_button = ttk.Button(row2_control_frame, text="Chuyển Tab", command=switch_tab_chrome)
+switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Gắn nút "Đóng cửa sổ gần nhất" với hàm close_latest_chrome
-close_latest_button = ttk.Button(row2_frame, text="Đóng", command=close_chrome)
-close_latest_button.pack(side=tk.LEFT, anchor='w')
+close_latest_button = ttk.Button(row2_control_frame, text="Đóng cửa sổ gần nhất", command=close_latest_chrome)
+close_latest_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
-minimize_button = ttk.Button(row3_frame, text="Thu nhỏ", command=minimize_selected_chrome)
-minimize_button.pack(side=tk.LEFT, anchor='w')
+minimize_button = ttk.Button(row3_control_frame, text="Thu nhỏ", command=minimize_selected_chrome)
+minimize_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Gắn nút "Khôi Phục" với hàm restore_selected_chrome
-restore_button = ttk.Button(row3_frame, text="Khôi Phục", command=restore_selected_chrome)
-restore_button.pack(side=tk.LEFT, anchor='w')
+restore_button = ttk.Button(row3_control_frame, text="Khôi Phục", command=restore_selected_chrome)
+restore_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
-# Frame hiển thị danh sách profile đang mở
-profiles_frame = ttk.Frame(listbox_frame)
-profiles_frame.pack(side=tk.RIGHT)
+# Gắn nút "Đóng" với hàm close_selected_chrome
+close_button = ttk.Button(row3_control_frame, text="Đóng", command=close_selected_chrome)
+close_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
-profiles_label = ttk.Label(profiles_frame, text="Danh sách Profile đang mở:")
-profiles_label.pack(side=tk.TOP, padx=5, pady=5)
+# Frame for displaying Profile đang mở
+open_profile_frame = ttk.Frame(profiles_frame, borderwidth=2, relief="groove")
+open_profile_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
+open_profile_label = ttk.Label(open_profile_frame, text="Profile đang mở")
+open_profile_label.pack(anchor="nw")
 
-profiles_listbox = tk.Listbox(profiles_frame, selectmode=tk.SINGLE, height=5)
-profiles_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+open_profile_listbox = tk.Listbox(open_profile_frame,  height=1)
+open_profile_listbox.pack(fill=tk.BOTH, expand=True)
 
-update_profile_listbox()  # Cập nhật danh sách profile ngay khi khởi động chương trình
+# Frame for displaying Profile chuẩn bị đóng
+close_profile_frame = ttk.Frame(profiles_frame, borderwidth=2, relief="groove")
+close_profile_frame.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True, padx=10, pady=10)
+close_profile_label = ttk.Label(close_profile_frame, text="Profile chuẩn bị đóng")
+close_profile_label.pack(anchor="nw")
+
+close_profile_listbox = tk.Listbox(close_profile_frame,  height=2)
+close_profile_listbox.pack(fill=tk.BOTH, expand=True)
 
 # -------------------------
 # End tương tác với Profile
@@ -716,8 +741,8 @@ def add_new_url():
         print("Vui lòng nhập một URL")
 
 # Tạo frame mới cho khung nhập URL
-url_input_frame = ttk.Frame(root)
-url_input_frame.pack(pady=10, fill=tk.X)
+url_input_frame = ttk.Frame(root, borderwidth=2, relief="groove")
+url_input_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
 # Label và Entry cho nhập URL mới
 new_url_label = ttk.Label(url_input_frame, text="Nhập URL mới:")
@@ -734,10 +759,6 @@ open_and_save_url_button.pack(side=tk.LEFT, padx=5)
 add_url_button = ttk.Button(url_input_frame, text="Thêm URL mới", command=add_new_url)
 add_url_button.pack(side=tk.LEFT, padx=5)
 
-# Tạo frame mới cho khung URL
-url_buttons_frame = ttk.Frame(root)
-url_buttons_frame.pack(pady=10, fill=tk.X)
-
 # Hàm để xử lý khi nhấn phím Enter trên trường nhập URL
 def handle_enter(event):
     if event.keysym == 'Return':
@@ -746,13 +767,21 @@ def handle_enter(event):
 # Gắn sự kiện nhấn phím Enter vào trường nhập URL
 new_url_entry.bind('<Return>', handle_enter)
 
+# Tạo frame mới cho khung URL
+url_frame = ttk.Frame(root, borderwidth=2, relief="groove")
+url_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+# Frame chứa Listbox cho danh sách URLs
+urls_listbox_frame = ttk.Frame(url_frame, borderwidth=2, relief="groove")
+urls_listbox_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
 # Label cho danh sách URLs
-urls_label = ttk.Label(url_buttons_frame, text="Danh sách URLs:")
-urls_label.pack(side=tk.LEFT, padx=5, pady=10)
+urls_label = ttk.Label(urls_listbox_frame, text="Danh sách URLs:", font=("Helvetica", 12, "bold"))
+urls_label.pack(side=tk.TOP, padx=5, pady=5)
 
 # Listbox để hiển thị danh sách URLs
-urls_listbox = tk.Listbox(url_buttons_frame, selectmode=tk.SINGLE, height=5)
-urls_listbox.pack(side=tk.LEFT, padx=5, pady=10)
+urls_listbox = tk.Listbox(urls_listbox_frame, selectmode=tk.SINGLE, height=5, font=("Helvetica", 10))
+urls_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
 # Thêm các URLs vào Listbox
 update_urls_listbox()
@@ -819,25 +848,33 @@ def clear_urls_list():
 # Xử lý sự kiện nhấp đúp vào một URL trong Listbox để mở URL với profile tương ứng
 urls_listbox.bind('<Double-Button-1>', lambda event: open_url_from_listbox(event))
 
-# Frame để chứa hai nút "Mở URL được chọn" và "Xóa danh sách URLs"
-open_delete_frame = ttk.Frame(url_buttons_frame)
-open_delete_frame.pack(fill=tk.X)
+# Frame chứa các nút tương tác URL trong Listbox
+url_control_frame  = ttk.Frame(url_frame)
+url_control_frame .pack(side=tk.LEFT, padx=5, anchor='w')
+
+# Tạo frame cho hàng đầu tiên
+row1_url_frame = ttk.Frame(url_control_frame )
+row1_url_frame.pack(side=tk.TOP, pady=5, anchor='w')
+
+# Tạo frame cho hàng thứ hai
+row2_url_frame = ttk.Frame(url_control_frame )
+row2_url_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
 # Nút để mở URL từ Listbox
-open_url_button = ttk.Button(open_delete_frame, text="Mở URL được chọn", command=open_url_from_listbox)
-open_url_button.pack(side=tk.LEFT, padx=5, pady=10)
+open_url_button = ttk.Button(row1_url_frame, text="Mở URL được chọn", command=open_url_from_listbox)
+open_url_button.pack(side=tk.LEFT, padx=5)
 
 # Nút để xóa URL từ Listbox
-delete_url_button = ttk.Button(open_delete_frame, text="Xóa URL được chọn", command=delete_selected_urls)
-delete_url_button.pack(side=tk.LEFT, padx=5, pady=10)
+delete_url_button = ttk.Button(row1_url_frame, text="Xóa URL được chọn", command=delete_selected_urls)
+delete_url_button.pack(side=tk.LEFT, padx=5)
 
 # Nút để mở URL với toàn bộ profile
-open_all_profiles_button = ttk.Button(url_buttons_frame, text="Mở URL với Toàn Bộ Profiles", command=open_url_all_profiles)
-open_all_profiles_button.pack(side=tk.LEFT, padx=5, pady=10)
+open_all_profiles_button = ttk.Button(row2_url_frame, text="Mở URL với Toàn Bộ Profiles", command=open_url_all_profiles)
+open_all_profiles_button.pack(side=tk.LEFT, padx=5)
 
 # Nút để xóa danh sách URLs
-delete_urls_button = ttk.Button(url_buttons_frame, text="Xóa danh sách URLs", command=clear_urls_list)
-delete_urls_button.pack(side=tk.LEFT, padx=5, pady=10)
+delete_urls_button = ttk.Button(row2_url_frame, text="Xóa danh sách URLs", command=clear_urls_list)
+delete_urls_button.pack(side=tk.LEFT, padx=5)
 
 # -------
 # End URL
@@ -856,21 +893,25 @@ def open_config_file():
 def open_url_file():
     subprocess.Popen(['notepad.exe', URL_FILE])
 
-# Tạo frame mới để chứa hai nút "Mở config.json", "Mở profiles.json" và "Mở URL.json"
-open_buttons_frame = ttk.Frame(root)
-open_buttons_frame.pack(pady=10)
+# Tạo frame mới để chứa các nút "Mở config.json", "Mở profiles.json" và "Mở URL.json"
+open_buttons_frame = ttk.Frame(root, borderwidth=2, relief="groove")
+open_buttons_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+# Frame chứa các nút để căn giữa các nút trong open_buttons_frame
+center_buttons_frame = ttk.Frame(open_buttons_frame)
+center_buttons_frame.pack(anchor="center")
 
 # Nút để mở config.json
-open_config_button = ttk.Button(open_buttons_frame, text="Mở config.json", command=open_config_file)
-open_config_button.pack(side=tk.LEFT, padx=5, pady=10)
+open_config_button = ttk.Button(center_buttons_frame, text="Mở config.json", command=open_config_file)
+open_config_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
 # Nút để mở profiles.json
-open_profiles_button = ttk.Button(open_buttons_frame, text="Mở profiles.json", command=open_profiles_file)
-open_profiles_button.pack(side=tk.LEFT, padx=5, pady=10)
+open_profiles_button = ttk.Button(center_buttons_frame, text="Mở profiles.json", command=open_profiles_file)
+open_profiles_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
 # Nút để mở URL.json
-open_url_button = ttk.Button(open_buttons_frame, text="Mở URL.json", command=open_url_file)
-open_url_button.pack(side=tk.LEFT, padx=5, pady=10)
+open_url_button = ttk.Button(center_buttons_frame, text="Mở URL.json", command=open_url_file)
+open_url_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
 # Hàm để cập nhật trạng thái always on top
 def toggle_always_on_top():
@@ -886,8 +927,8 @@ def on_checkbox_change():
 
 # Tạo checkbox để điều khiển tính năng luôn hiển thị trên cùng
 always_on_top_var = tk.BooleanVar()
-always_on_top_checkbox = ttk.Checkbutton(open_buttons_frame, text="Luôn hiển thị trên cùng", variable=always_on_top_var, command=toggle_always_on_top)
-always_on_top_checkbox.pack(side=tk.LEFT, padx=5, pady=10)
+always_on_top_checkbox = ttk.Checkbutton(center_buttons_frame, text="Luôn hiển thị trên cùng", variable=always_on_top_var, command=toggle_always_on_top)
+always_on_top_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
 # Biến để lưu trạng thái của checkbox
 is_always_on_top = False
