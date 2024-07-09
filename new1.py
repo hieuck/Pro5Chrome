@@ -75,20 +75,19 @@ default_chrome_path = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 # Cấu hình mặc định
 DEFAULT_CONFIG = {
     "always_on_top": False,
-    "chrome_paths": ["C:/Program Files/Google/Chrome/Application/chrome.exe"],
-    "use_chrome_path": "C:/Program Files/Google/Chrome/Application/chrome.exe"
+    "chrome_paths": ["C:/Program Files/Google/Chrome/Application/chrome.exe"]
 }
 
 # Hàm để đọc cấu hình từ tệp config.json
 def read_config():
-    global is_always_on_top, chrome_paths
+    global is_always_on_top, chrome_paths, default_chrome_path
     try:
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r') as file:
                 config = json.load(file)
                 is_always_on_top = config.get('always_on_top', False)
                 chrome_paths = config.get('chrome_paths', [default_chrome_path])
-                chrome_paths[0] = config.get('use_chrome_path', default_chrome_path)
+                default_chrome_path = chrome_paths[0] if chrome_paths else default_chrome_path
         else:
             print(f"Tệp {CONFIG_FILE} không tồn tại. Sẽ sử dụng cấu hình mặc định.")
             is_always_on_top = False
@@ -108,11 +107,10 @@ def read_config():
 
 # Hàm để lưu cấu hình
 def save_config():
-    global is_always_on_top, chrome_paths
+    global is_always_on_top, chrome_paths, default_chrome_path
     config = {
         'always_on_top': is_always_on_top,
-        'chrome_paths': chrome_paths,
-        'use_chrome_path': chrome_paths[0] if len(chrome_paths) > 0 else default_chrome_path
+        'chrome_paths': chrome_paths
     }
     try:
         with open(CONFIG_FILE, 'w') as file:
@@ -130,8 +128,7 @@ def handle_json_error():
         # Tạo lại tệp config.json với dữ liệu mặc định
         default_config = {
             'always_on_top': is_always_on_top,
-            'chrome_paths': [default_chrome_path],
-            'use_chrome_path': default_chrome_path            
+            'chrome_paths': [default_chrome_path]           
         }
         with open(CONFIG_FILE, 'w') as file:
             json.dump(default_config, file, indent=4)
@@ -155,101 +152,45 @@ def toggle_always_on_top():
 
 # Hàm xử lý sự kiện khi checkbox thay đổi trạng thái
 def on_checkbox_change():
-    set_always_on_top()  # Đảm bảo rằng trạng thái always on top được cập nhật
+    toggle_always_on_top()  # Đảm bảo rằng trạng thái always on top được cập nhật
     save_config()  # Lưu trạng thái vào config.json khi checkbox thay đổi
     always_on_top_var.set(is_always_on_top)  # Đồng bộ hóa checkbox với giá trị mới của is_always_on_top
 
 # Biến để lưu trạng thái của checkbox
-# is_always_on_top = False
+is_always_on_top = False
 
 # Gọi hàm để đọc cấu hình khi khởi động ứng dụng
 read_config()
 
 # Tạo checkbox để điều khiển tính năng luôn hiển thị trên cùng
 always_on_top_var = tk.BooleanVar()
-always_on_top_var.set(False)  # Giá trị mặc định, có thể bị ghi đè sau khi đọc từ config.json
+always_on_top_var.set(is_always_on_top)  # Giá trị mặc định, có thể bị ghi đè sau khi đọc từ config.json
 always_on_top_checkbox = ttk.Checkbutton(center_buttons_frame, text="Luôn hiển thị trên cùng", variable=always_on_top_var, command=toggle_always_on_top)
 always_on_top_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
-# Gọi hàm toggle_always_on_top() khi cần thay đổi trạng thái always on top
-toggle_always_on_top()
-
-# Sử dụng hàm để đọc tệp config.json
-config_data = read_config()
-if config_data:
-    is_always_on_top = config_data.get('always_on_top', False)
-    always_on_top_var.set(is_always_on_top)  # Đồng bộ hóa always_on_top_var với giá trị từ config.json
-    toggle_always_on_top()  # Gọi hàm để đảm bảo rằng trạng thái always on top được cập nhật đúng khi khởi động
-
-    # Đọc danh sách đường dẫn Chrome từ config
-    chrome_paths = config_data.get('chrome_paths', [default_chrome_path])
-else:
-    print("Không tìm thấy dữ liệu hợp lệ từ config.json.")
-
-# Nếu gặp lỗi giải mã JSON, xử lý lỗi và tạo lại tệp
-if config_data is None:
-    config_data = handle_json_error()
-
-# Kiểm tra dữ liệu cấu hình và thực hiện các thao tác cần thiết
-try:
-    if config_data:
-        print("Đã đọc dữ liệu từ tệp config.json.")
-
-        always_on_top = config_data.get('always_on_top', False)
-        print(f"Giá trị always_on_top từ config.json: {always_on_top}")
-
-        use_chrome_path = config_data.get('use_chrome_path', default_chrome_path)
-        print(f"Đường dẫn Chrome từ config: {use_chrome_path}")
-    else:
-        print("Không có dữ liệu hợp lệ từ config.json sau khi xử lý lỗi.")
-except Exception as e:
-    print(f"Lỗi khi xử lý: {e}")
-
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
-    global is_always_on_top, chrome_paths
+    global default_chrome_path
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r') as file:
             config = json.load(file)
-            return config.get('use_chrome_path', '')  # Trả về đường dẫn Chrome từ config nếu có
+            return config.get('chrome_paths', [default_chrome_path])[0]  # Trả về đường dẫn Chrome từ config nếu có
     else:
-        return ''
-
-# Đọc danh sách đường dẫn Chrome từ config
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, 'r') as file:
-        config = json.load(file)
-        chrome_paths = config.get('chrome_paths', [default_chrome_path])
-else:
-    chrome_paths = [default_chrome_path]
+        return default_chrome_path
 
 # Hàm để lưu đường dẫn Chrome vào config
-def save_chrome_path(use_chrome_path):
-    global is_always_on_top, chrome_paths
+def save_chrome_path(chrome_path):
+    global chrome_paths, default_chrome_path
     try:
-        # Đọc cấu hình hiện tại từ file
-        config = {
-            'always_on_top': is_always_on_top,
-            'chrome_paths': chrome_paths,
-            'use_chrome_path': default_chrome_path  # Sẽ ghi đè lên dưới nếu có đường dẫn Chrome hợp lệ
-        }
+        if 'chrome.exe' not in chrome_path.lower():
+            chrome_path = os.path.join(chrome_path, 'chrome.exe')
         
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, 'r') as file:
-                config = json.load(file)
-
-        # Kiểm tra nếu đường dẫn Chrome mới khác với đường dẫn hiện tại thì mới lưu lại
-        if use_chrome_path != config.get('use_chrome_path'):
-            if 'chrome.exe' not in use_chrome_path.lower():
-                use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
-            
-            config['use_chrome_path'] = use_chrome_path
-            with open(CONFIG_FILE, 'w') as file:
-                json.dump(config, file, indent=4)
-            
-            # Cập nhật lại biến toàn cục
-            chrome_paths = config.get('chrome_paths', [default_chrome_path])
-
+        if chrome_path not in chrome_paths:
+            chrome_paths.append(chrome_path)
+        
+        default_chrome_path = chrome_path
+        save_config()
+        
     except PermissionError as e:
         print(f"Không có quyền truy cập để ghi vào {CONFIG_FILE}: {e}")
     except Exception as e:
@@ -257,7 +198,7 @@ def save_chrome_path(use_chrome_path):
 
 # Hàm để mở thư mục User Data
 def open_user_data_folder():
-    use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
+    use_chrome_path = chrome_var.get() or read_chrome_path()
     
     print(f"Đường dẫn Chrome đã sử dụng: {use_chrome_path}")
     
@@ -298,7 +239,7 @@ chrome_path_label = ttk.Label(chrome_frame, text="Chọn hoặc Nhập đường
 chrome_path_label.pack(side=tk.LEFT, padx=5)
 
 chrome_var = tk.StringVar()
-chrome_var.set(read_chrome_path() or default_chrome_path)
+chrome_var.set(read_chrome_path())
 chrome_dropdown = ttk.Combobox(chrome_frame, textvariable=chrome_var)
 chrome_dropdown['values'] = chrome_paths
 chrome_dropdown.pack(side=tk.LEFT, padx=5)
@@ -310,6 +251,10 @@ open_user_data_button.pack(side=tk.LEFT, padx=5)
 # Tạo nút để xóa đường dẫn Chrome đã chọn
 delete_chrome_path_button = ttk.Button(chrome_frame, text="Xóa đường dẫn đã chọn", command=delete_selected_chrome_path)
 delete_chrome_path_button.pack(side=tk.LEFT, padx=5)
+
+# Gọi hàm để cập nhật giao diện khi khởi động
+always_on_top_var.set(is_always_on_top)  # Đồng bộ hóa always_on_top_var với giá trị từ config.json
+root.attributes('-topmost', is_always_on_top)  # Đảm bảo rằng trạng thái always on top được thiết lập chính xác khi khởi động
 
 # ------------------------
 # End Chrome configuration
