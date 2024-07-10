@@ -669,25 +669,28 @@ def switch_tab_chrome():
         # Sắp xếp các cửa sổ theo thứ tự đảo ngược của thứ tự chúng được mở
         chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
 
-        # Nếu chỉ số cửa sổ hiện tại vượt quá số lượng cửa sổ, đặt lại về 0
+        # Kiểm tra và cập nhật chỉ số cửa sổ hiện tại để không vượt quá số lượng cửa sổ
         if current_window_index >= len(chrome_windows):
             current_window_index = 0
 
-        # Lấy cửa sổ kế tiếp dựa trên chỉ số hiện tại
-        chrome_window = chrome_windows[current_window_index]
+        if chrome_windows:
+            # Lấy cửa sổ kế tiếp dựa trên chỉ số hiện tại
+            chrome_window = chrome_windows[current_window_index]
 
-        try:
-            # Kích hoạt cửa sổ mà không di chuyển chuột
-            chrome_window.activate()
-            print(f"Đã chuyển đến và kích hoạt cửa sổ: {chrome_window.title}")
+            try:
+                # Kích hoạt cửa sổ mà không di chuyển chuột
+                chrome_window.activate()
+                print(f"Đã chuyển đến và kích hoạt cửa sổ: {chrome_window.title}")
 
-            # Tăng chỉ số cửa sổ hiện tại để chuyển sang cửa sổ kế tiếp trong lần nhấn nút tiếp theo
-            current_window_index += 1
+                # Tăng chỉ số cửa sổ hiện tại để chuyển sang cửa sổ kế tiếp trong lần nhấn nút tiếp theo
+                current_window_index += 1
 
-            # Cập nhật danh sách các cửa sổ đang mở
-            update_profile_listbox()
-        except Exception as e:
-            print(f"Lỗi khi chuyển tab: {e}")
+                # Cập nhật danh sách các cửa sổ đang mở
+                update_profile_listbox()
+            except Exception as e:
+                print(f"Lỗi khi chuyển tab: {e}")
+        else:
+            print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào sau khi loại bỏ cửa sổ chính.")
     else:
         print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào.")
 
