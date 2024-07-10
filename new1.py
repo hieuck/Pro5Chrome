@@ -82,6 +82,12 @@ DEFAULT_CONFIG = {
     "chrome_paths": ["C:/Program Files/Google/Chrome/Application/chrome.exe"]
 }
 
+# Hàm chuẩn hóa đường dẫn
+def normalize_paths(config):
+    if 'chrome_paths' in config:
+        config['chrome_paths'] = [path.replace("\\", "/") for path in config['chrome_paths']]
+    return config
+
 # Hàm để đọc cấu hình từ tệp config.json
 def read_config():
     global is_always_on_top, chrome_paths, default_chrome_path
@@ -89,6 +95,7 @@ def read_config():
         if os.path.exists(CONFIG_FILE):
             with open(CONFIG_FILE, 'r') as file:
                 config = json.load(file)
+                config = normalize_paths(config)
                 is_always_on_top = config.get('always_on_top', False)
                 chrome_paths = config.get('chrome_paths', [default_chrome_path])
                 default_chrome_path = chrome_paths[0] if chrome_paths else default_chrome_path
@@ -117,6 +124,7 @@ def save_config():
         'chrome_paths': chrome_paths
     }
     try:
+        config = normalize_paths(config)
         with open(CONFIG_FILE, 'w') as file:
             json.dump(config, file, indent=4)
     except Exception as e:
