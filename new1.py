@@ -171,9 +171,6 @@ def on_checkbox_change():
 # Biến để lưu trạng thái của checkbox
 is_always_on_top = False
 
-# Gọi hàm để đọc cấu hình khi khởi động ứng dụng
-read_config()
-
 # Tạo checkbox để điều khiển tính năng luôn hiển thị trên cùng
 always_on_top_var = tk.BooleanVar()
 always_on_top_var.set(is_always_on_top)  # Giá trị mặc định, có thể bị ghi đè sau khi đọc từ config.json
@@ -182,27 +179,38 @@ always_on_top_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
-    global default_chrome_path
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r') as file:
             config = json.load(file)
-            return config.get('chrome_paths', [default_chrome_path])[0]  # Trả về đường dẫn Chrome từ config nếu có
+            return config.get('chrome_path', '')  # Trả về đường dẫn Chrome từ config nếu có
     else:
-        return default_chrome_path
+        return ''
+
+# Đọc danh sách đường dẫn Chrome từ config
+if os.path.exists(CONFIG_FILE):
+    with open(CONFIG_FILE, 'r') as file:
+        config = json.load(file)
+        chrome_paths = config.get('chrome_paths', [default_chrome_path])
+else:
+    chrome_paths = [default_chrome_path]
 
 # Hàm để lưu đường dẫn Chrome vào config
 def save_chrome_path(chrome_path):
-    global chrome_paths, default_chrome_path
+    # Đọc cấu hình hiện tại từ file
+    config = {}
     try:
-        if 'chrome.exe' not in chrome_path.lower():
-            chrome_path = os.path.join(chrome_path, 'chrome.exe')
-        
-        if chrome_path not in chrome_paths:
-            chrome_paths.append(chrome_path)
-        
-        default_chrome_path = chrome_path
-        save_config()
-        
+        if os.path.exists(CONFIG_FILE):
+            with open(CONFIG_FILE, 'r') as file:
+                config = json.load(file)
+
+        # Kiểm tra nếu đường dẫn Chrome mới khác với đường dẫn hiện tại thì mới lưu lại
+        if chrome_path != config.get('chrome_path'):
+            if 'chrome.exe' not in chrome_path.lower():
+                chrome_path = os.path.join(chrome_path, 'chrome.exe')
+            config['chrome_path'] = chrome_path
+            with open(CONFIG_FILE, 'w') as file:
+                json.dump(config, file, indent=4)
+
     except PermissionError as e:
         print(f"Không có quyền truy cập để ghi vào {CONFIG_FILE}: {e}")
     except Exception as e:
@@ -278,7 +286,7 @@ root.attributes('-topmost', is_always_on_top)  # Đảm bảo rằng trạng th�
 
 def update_profile_listbox():
     global open_profile_listbox, close_profile_listbox, profile_window_map
-    main_window_title = root.title()  # Đảm bảo biến main_window_title đã được định nghĩa
+    main_window_title = root.title()  # Lấy tiêu đề của cửa sổ chính của chương trình
 
     # Tìm tất cả các cửa sổ Chrome hoặc CentBrowser
     chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
@@ -293,13 +301,18 @@ def update_profile_listbox():
 
     # Thêm các cửa sổ Chrome vào ListBox tương ứng
     for win in chrome_windows:
+        profile_window_map[win.title] = win
         if win.isActive:
             open_profile_listbox.insert(tk.END, win.title)
-            profile_window_map[win.title] = win
-
-    for win in chrome_windows:
         close_profile_listbox.insert(tk.END, win.title)
         profile_window_map[win.title] = win
+
+def update_listbox_decorator(func):
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+        update_profile_listbox()
+        return result
+    return wrapper
 
 # Hàm để đọc danh sách profiles từ tệp
 def read_profiles():
@@ -318,6 +331,7 @@ def save_profiles(profiles):
         json.dump(profiles, file, indent=4)
 
 # Hàm để mở Chrome và thêm profile nếu chưa tồn tại, sau đó mở Chrome
+@update_listbox_decorator
 def open_chrome_and_add_profile():
     selected_profile = profile_var.get()
     if selected_profile:
@@ -341,6 +355,7 @@ def open_chrome_and_add_profile():
         print("Vui lòng chọn hoặc nhập một profile")
 
 # Hàm để mở Chrome với profile được chọn
+@update_listbox_decorator
 def open_chrome(profile):
     use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
     if 'chrome.exe' not in use_chrome_path.lower():
@@ -349,6 +364,7 @@ def open_chrome(profile):
     subprocess.Popen([use_chrome_path, profile_directory])
 
 # Hàm để mở trang đăng nhập Google trong Chrome
+@update_listbox_decorator
 def login_google(profile):
     use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
     if 'chrome.exe' not in use_chrome_path.lower():
@@ -358,6 +374,7 @@ def login_google(profile):
     subprocess.Popen([use_chrome_path, profile_directory, login_url])
 
 # Hàm để đăng nhập Google với profile từ Combobox
+@update_listbox_decorator
 def login_google_from_combobox(event=None):
     selected_profile = profile_var.get()
     if selected_profile:
@@ -366,6 +383,7 @@ def login_google_from_combobox(event=None):
         print("Vui lòng chọn một profile từ Combobox")
 
 # Hàm để đóng tất cả các tiến trình Chrome
+@update_listbox_decorator
 def close_chrome():
     try:
         if os.name == 'nt':  # Windows
@@ -376,10 +394,11 @@ def close_chrome():
         print(f"Đã xảy ra lỗi khi đóng Chrome: {e}")
 
 # Hàm để xử lý khi nhấn Enter trên Combobox để mở Chrome
+@update_listbox_decorator
 def open_chrome_on_enter(event=None):
     if event and event.keysym == 'Return':
         open_chrome_and_add_profile()
-
+    
 # Tạo frame chứa Combobox và Entry cho Profile Chrome
 configs_frame = ttk.Frame(root, borderwidth=2, relief="groove")
 configs_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -418,24 +437,22 @@ close_button.pack(side=tk.LEFT, padx=5)
 # -----------------
 
 # Hàm để mở profile từ Listbox
+@update_listbox_decorator
 def open_profile_from_listbox(event=None):
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
         open_chrome(selected_profile)
-        # Cập nhật danh sách các cửa sổ đang mở
-        update_profile_listbox()
     else:
         print("Vui lòng chọn một profile từ danh sách")
 
 # Hàm để đăng nhập Google với profile từ Listbox
+@update_listbox_decorator
 def login_google_from_listbox(event=None):
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
         login_google(selected_profile)
-        # Cập nhật danh sách các cửa sổ đang mở
-        update_profile_listbox()
     else:
         print("Vui lòng chọn một profile từ danh sách")
 
@@ -536,6 +553,7 @@ profiles_listbox.bind("<Button-3>", on_right_click)
 # ---------------------------
 
 # Hàm để mở toàn bộ Chrome với các profile
+@update_listbox_decorator
 def open_all_chrome_profiles():
     use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
     if 'chrome.exe' not in use_chrome_path.lower():
@@ -568,7 +586,7 @@ def find_chrome_window(profile_name):
         return filtered_windows[0]  # Trả về cửa sổ đầu tiên trong danh sách đã loại bỏ cửa sổ chính
     else:
         return None
-
+@update_listbox_decorator
 def maximize_selected_chrome():
     index = profiles_listbox.curselection()
     if index:
@@ -578,13 +596,12 @@ def maximize_selected_chrome():
         chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
             chrome_window.maximize()
-            # Cập nhật danh sách các cửa sổ đang mở
-            update_profile_listbox()
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
     else:
         print("Vui lòng chọn một hồ sơ để phóng to.")
 
+@update_listbox_decorator
 def minimize_selected_chrome():
     index = profiles_listbox.curselection()
     if index:
@@ -599,6 +616,7 @@ def minimize_selected_chrome():
     else:
         print("Vui lòng chọn một hồ sơ để thu nhỏ.")
 
+@update_listbox_decorator
 def restore_selected_chrome():
     index = profiles_listbox.curselection()
     if index:
@@ -612,14 +630,10 @@ def restore_selected_chrome():
                 chrome_window.restore()
                 chrome_window.activate()
                 print(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ '{selected_profile}'")
-                # Cập nhật danh sách các cửa sổ đang mở
-                update_profile_listbox()
             elif not chrome_window.isActive:
                 chrome_window.restore()
                 chrome_window.activate()
                 print(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ gần nhất")
-                # Cập nhật danh sách các cửa sổ đang mở
-                update_profile_listbox()
             else:
                 print(f"Cửa sổ cho hồ sơ gần nhất đã hoạt động trước đó.")
         else:
@@ -628,6 +642,7 @@ def restore_selected_chrome():
         print("Vui lòng chọn một hồ sơ để khôi phục.")
 
 # Hàm để đóng cửa sổ Chrome hoặc Cent Browser
+@update_listbox_decorator
 def close_chrome_window():
     # Lấy title của cửa sổ chính của chương trình
     main_window_title = root.title()  
@@ -652,8 +667,6 @@ def close_chrome_window():
                     win.close()
                     print(f"Đã đóng cửa sổ: {win.title}")
 
-                    # Cập nhật danh sách các cửa sổ đang mở
-                    update_profile_listbox()
                     return  # Kết thúc sau khi đóng thành công cửa sổ
                 except Exception as e:
                     print(f"Lỗi khi đóng cửa sổ: {e}")
@@ -663,6 +676,7 @@ def close_chrome_window():
     else:
         print("Không tìm thấy cửa sổ Chrome hoặc Cent Browser nào để đóng.")
 
+@update_listbox_decorator
 def switch_tab_chrome():
     global current_window_index
     main_window_title = root.title()  # Đảm bảo biến main_window_title đã được định nghĩa
@@ -693,8 +707,6 @@ def switch_tab_chrome():
                 # Tăng chỉ số cửa sổ hiện tại để chuyển sang cửa sổ kế tiếp trong lần nhấn nút tiếp theo
                 current_window_index += 1
 
-                # Cập nhật danh sách các cửa sổ đang mở
-                update_profile_listbox()
             except Exception as e:
                 print(f"Lỗi khi chuyển tab: {e}")
         else:
@@ -1058,6 +1070,9 @@ root.protocol("WM_DELETE_WINDOW", on_close)
 # Hàm để cập nhật danh sách profile khi khởi động
 update_profile_listbox()
 update_listbox()
+
+# Gọi hàm để đọc cấu hình khi khởi động ứng dụng
+read_config()
 
 # Chạy GUI
 root.mainloop()
