@@ -98,7 +98,11 @@ def read_config():
                 config = normalize_paths(config)
                 is_always_on_top = config.get('always_on_top', False)
                 chrome_paths = config.get('chrome_paths', [default_chrome_path])
-                default_chrome_path = chrome_paths[0] if chrome_paths else default_chrome_path
+                # default_chrome_path = chrome_paths[0] if chrome_paths else default_chrome_path
+                chrome_path = config.get('chrome_path', default_chrome_path)
+                # In thông báo về các giá trị cấu hình đã đọc
+                print(f"is_always_on_top: {is_always_on_top}")
+                print(f"use_chrome_path: {chrome_path}")
         else:
             print(f"Tệp {CONFIG_FILE} không tồn tại. Sẽ sử dụng cấu hình mặc định.")
             is_always_on_top = False
@@ -171,6 +175,9 @@ def on_checkbox_change():
 # Biến để lưu trạng thái của checkbox
 is_always_on_top = False
 
+# Gọi hàm để đọc cấu hình khi khởi động ứng dụng
+read_config()
+
 # Tạo checkbox để điều khiển tính năng luôn hiển thị trên cùng
 always_on_top_var = tk.BooleanVar()
 always_on_top_var.set(is_always_on_top)  # Giá trị mặc định, có thể bị ghi đè sau khi đọc từ config.json
@@ -180,19 +187,36 @@ always_on_top_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
     if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as file:
-            config = json.load(file)
-            return config.get('chrome_path', '')  # Trả về đường dẫn Chrome từ config nếu có
+        try:
+            with open(CONFIG_FILE, 'r') as file:
+                config = json.load(file)
+                return config.get('chrome_path', '')  # Trả về đường dẫn Chrome từ config nếu có
+        except json.JSONDecodeError as e:
+            print(f"Lỗi khi đọc file cấu hình: {e}")
+            return ''
+        except Exception as e:
+            print(f"Lỗi không xác định khi đọc file cấu hình: {e}")
+            return ''
     else:
         return ''
 
 # Đọc danh sách đường dẫn Chrome từ config
-if os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, 'r') as file:
-        config = json.load(file)
-        chrome_paths = config.get('chrome_paths', [default_chrome_path])
-else:
-    chrome_paths = [default_chrome_path]
+def read_chrome_paths():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r') as file:
+                config = json.load(file)
+                return config.get('chrome_paths', [default_chrome_path])
+        except json.JSONDecodeError as e:
+            print(f"Lỗi khi đọc file cấu hình: {e}")
+            return [default_chrome_path]
+        except Exception as e:
+            print(f"Lỗi không xác định khi đọc file cấu hình: {e}")
+            return [default_chrome_path]
+    else:
+        return [default_chrome_path]
+
+chrome_paths = read_chrome_paths()
 
 # Hàm để lưu đường dẫn Chrome vào config
 def save_chrome_path(chrome_path):
@@ -211,11 +235,12 @@ def save_chrome_path(chrome_path):
             with open(CONFIG_FILE, 'w') as file:
                 json.dump(config, file, indent=4)
 
+    except json.JSONDecodeError as e:
+        print(f"Lỗi khi đọc hoặc ghi file cấu hình: {e}")
     except PermissionError as e:
         print(f"Không có quyền truy cập để ghi vào {CONFIG_FILE}: {e}")
     except Exception as e:
         print(f"Lỗi khi lưu đường dẫn Chrome: {e}")
-
 # Hàm để mở thư mục User Data
 def open_user_data_folder():
     use_chrome_path = chrome_var.get() or read_chrome_path()
@@ -1070,9 +1095,6 @@ root.protocol("WM_DELETE_WINDOW", on_close)
 # Hàm để cập nhật danh sách profile khi khởi động
 update_profile_listbox()
 update_listbox()
-
-# Gọi hàm để đọc cấu hình khi khởi động ứng dụng
-read_config()
 
 # Chạy GUI
 root.mainloop()
