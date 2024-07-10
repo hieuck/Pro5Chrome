@@ -28,6 +28,10 @@ PROFILE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'profile
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
 URL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'URL.json')
 
+# Khởi tạo các biến toàn cục
+profile_window_map = {}
+current_window_index = 0
+
 # --------------------------------------------------------------
 # Start Nút để mở các tệp profiles.json, config.json và URL.json
 # --------------------------------------------------------------
@@ -265,7 +269,7 @@ root.attributes('-topmost', is_always_on_top)  # Đảm bảo rằng trạng th�
 # ----------------------------------
 
 def update_profile_listbox():
-    global open_profile_listbox, close_profile_listbox
+    global open_profile_listbox, close_profile_listbox, profile_window_map
     main_window_title = root.title()  # Đảm bảo biến main_window_title đã được định nghĩa
 
     # Tìm tất cả các cửa sổ Chrome hoặc CentBrowser
@@ -277,13 +281,17 @@ def update_profile_listbox():
     # Xóa danh sách cũ
     open_profile_listbox.delete(0, tk.END)
     close_profile_listbox.delete(0, tk.END)
+    profile_window_map = {}
 
     # Thêm các cửa sổ Chrome vào ListBox tương ứng
     for win in chrome_windows:
         if win.isActive:
             open_profile_listbox.insert(tk.END, win.title)
+            profile_window_map[win.title] = win
+
     for win in chrome_windows:
         close_profile_listbox.insert(tk.END, win.title)
+        profile_window_map[win.title] = win
 
 # Hàm để đọc danh sách profiles từ tệp
 def read_profiles():
@@ -612,24 +620,6 @@ def restore_selected_chrome():
     else:
         print("Vui lòng chọn một hồ sơ để khôi phục.")
 
-def close_selected_chrome():
-    index = profiles_listbox.curselection()
-    if index:
-        selected_profile = profiles_listbox.get(index)
-        
-        # Tìm cửa sổ Chrome hoặc CentBrowser
-        chrome_window = find_chrome_window(selected_profile)
-        if chrome_window:
-            chrome_window.close()
-            print(f"Đã đóng cửa sổ cho hồ sơ '{selected_profile}'")
-            
-            # Cập nhật danh sách các cửa sổ đang mở
-            update_profile_listbox()
-        else:
-            print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
-    else:
-        print("Vui lòng chọn một hồ sơ để đóng.")
- 
 def close_latest_chrome():
     main_window_title = root.title()  # Lấy title của cửa sổ chính của chương trình
     # Tìm tất cả các cửa sổ của Chrome và CentBrowser
@@ -641,25 +631,42 @@ def close_latest_chrome():
 
         # Kiểm tra xem cửa sổ đầu tiên có phải là cửa sổ chính của chương trình không
         if chrome_windows[0].title != main_window_title:
-            chrome_windows[0].close()
-            print("Đã đóng cửa sổ gần nhất của Chrome hoặc CentBrowser.")
-            
-            # Cập nhật danh sách các cửa sổ đang mở
-            update_profile_listbox()
+            # Kiểm tra xem cửa sổ đầu tiên có trong danh sách các cửa sổ đang mở không
+            if chrome_windows[0].title in profile_window_map and chrome_windows[0].isActive:
+                chrome_windows[0].close()
+                print(f"Đã đóng cửa sổ gần nhất của Chrome hoặc CentBrowser: {chrome_windows[0].title}")
+                
+                # Cập nhật danh sách các cửa sổ đang mở
+                update_profile_listbox()
+            else:
+                print(f"Cửa sổ '{chrome_windows[0].title}' không nằm trong danh sách các cửa sổ đang mở.")
+                # Kiểm tra xem có cửa sổ thay thế để đóng không
+                if len(chrome_windows) > 1:
+                    # Kiểm tra xem cửa sổ thay thế có trong danh sách các cửa sổ đang mở không
+                    if chrome_windows[1].title in profile_window_map:
+                        chrome_windows[1].close()
+                        print(f"Đã đóng cửa sổ thay thế: {chrome_windows[1].title}")
+                        # Cập nhật danh sách các cửa sổ đang mở
+                        update_profile_listbox()
+                    else:
+                        print(f"Cửa sổ thay thế '{chrome_windows[1].title}' không nằm trong danh sách các cửa sổ đang mở.")
+                else:
+                    print("Không có cửa sổ thay thế để đóng.")
         else:
             print("Cửa sổ gần nhất là cửa sổ chính của chương trình, không thể đóng.")
             if len(chrome_windows) > 1:
-                chrome_windows[1].close()
-                print("Đã đóng cửa sổ thay thế.")
-                # Cập nhật danh sách các cửa sổ đang mở
-                update_profile_listbox()
+                # Kiểm tra xem cửa sổ thay thế có trong danh sách các cửa sổ đang mở không
+                if chrome_windows[1].title in profile_window_map:
+                    chrome_windows[1].close()
+                    print(f"Đã đóng cửa sổ thay thế: {chrome_windows[1].title}")
+                    # Cập nhật danh sách các cửa sổ đang mở
+                    update_profile_listbox()
+                else:
+                    print(f"Cửa sổ thay thế '{chrome_windows[1].title}' không nằm trong danh sách các cửa sổ đang mở.")
             else:
                 print("Không có cửa sổ thay thế để đóng.")
     else:
         print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào để đóng.")
-
-# Biến toàn cục để lưu trữ chỉ số của cửa sổ hiện tại
-current_window_index = 0
 
 def switch_tab_chrome():
     global current_window_index
@@ -740,10 +747,6 @@ minimize_button.pack(side=tk.LEFT, padx=5, anchor='w')
 # Gắn nút "Khôi Phục" với hàm restore_selected_chrome
 restore_button = ttk.Button(row3_control_frame, text="Khôi Phục", command=restore_selected_chrome)
 restore_button.pack(side=tk.LEFT, padx=5, anchor='w')
-
-# Gắn nút "Đóng" với hàm close_selected_chrome
-close_button = ttk.Button(row3_control_frame, text="Đóng", command=close_selected_chrome)
-close_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Frame for displaying Profile đang mở
 open_profile_frame = ttk.Frame(profiles_frame, borderwidth=2, relief="groove")
@@ -1053,6 +1056,9 @@ def on_close():
 
 # Gắn sự kiện khi đóng cửa sổ
 root.protocol("WM_DELETE_WINDOW", on_close)
+
+# Hàm để cập nhật danh sách profile khi khởi động
+update_profile_listbox()
 
 # Chạy GUI
 root.mainloop()
