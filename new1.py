@@ -332,6 +332,9 @@ def update_profile_listbox():
         close_profile_listbox.insert(tk.END, win.title)
         profile_window_map[win.title] = win
 
+    # Lập lịch cập nhật lại sau 5 giây
+    root.after(5000, update_profile_listbox)
+
 def update_listbox_decorator(func):
     def wrapper(*args, **kwargs):
         result = func(*args, **kwargs)
