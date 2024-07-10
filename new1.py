@@ -607,8 +607,10 @@ def restore_selected_chrome():
                 chrome_window.restore()
                 chrome_window.activate()
                 print(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ '{selected_profile}'")
+                # Cập nhật danh sách các cửa sổ đang mở
+                update_profile_listbox()
             elif not chrome_window.isActive:
-                # chrome_window.restore()
+                chrome_window.restore()
                 chrome_window.activate()
                 print(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ gần nhất")
                 # Cập nhật danh sách các cửa sổ đang mở
@@ -620,8 +622,12 @@ def restore_selected_chrome():
     else:
         print("Vui lòng chọn một hồ sơ để khôi phục.")
 
-def close_latest_chrome():
-    main_window_title = root.title()  # Lấy title của cửa sổ chính của chương trình
+
+# Hàm để đóng cửa sổ Chrome hoặc Cent Browser
+def close_chrome_window():
+    # Lấy title của cửa sổ chính của chương trình
+    main_window_title = root.title()  
+
     # Tìm tất cả các cửa sổ của Chrome và CentBrowser
     chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
 
@@ -629,44 +635,29 @@ def close_latest_chrome():
         # Sắp xếp các cửa sổ theo thứ tự đảo ngược của thứ tự chúng được mở
         chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
 
-        # Kiểm tra xem cửa sổ đầu tiên có phải là cửa sổ chính của chương trình không
-        if chrome_windows[0].title != main_window_title:
-            # Kiểm tra xem cửa sổ đầu tiên có trong danh sách các cửa sổ đang mở không
-            if chrome_windows[0].title in profile_window_map and chrome_windows[0].isActive:
-                chrome_windows[0].close()
-                print(f"Đã đóng cửa sổ gần nhất của Chrome hoặc CentBrowser: {chrome_windows[0].title}")
-                
-                # Cập nhật danh sách các cửa sổ đang mở
-                update_profile_listbox()
-            else:
-                print(f"Cửa sổ '{chrome_windows[0].title}' không nằm trong danh sách các cửa sổ đang mở.")
-                # Kiểm tra xem có cửa sổ thay thế để đóng không
-                if len(chrome_windows) > 1:
-                    # Kiểm tra xem cửa sổ thay thế có trong danh sách các cửa sổ đang mở không
-                    if chrome_windows[1].title in profile_window_map:
-                        chrome_windows[1].close()
-                        print(f"Đã đóng cửa sổ thay thế: {chrome_windows[1].title}")
-                        # Cập nhật danh sách các cửa sổ đang mở
-                        update_profile_listbox()
-                    else:
-                        print(f"Cửa sổ thay thế '{chrome_windows[1].title}' không nằm trong danh sách các cửa sổ đang mở.")
-                else:
-                    print("Không có cửa sổ thay thế để đóng.")
-        else:
-            print("Cửa sổ gần nhất là cửa sổ chính của chương trình, không thể đóng.")
-            if len(chrome_windows) > 1:
-                # Kiểm tra xem cửa sổ thay thế có trong danh sách các cửa sổ đang mở không
-                if chrome_windows[1].title in profile_window_map:
-                    chrome_windows[1].close()
-                    print(f"Đã đóng cửa sổ thay thế: {chrome_windows[1].title}")
+        # Lặp qua các cửa sổ tìm được
+        for win in chrome_windows:
+            # Đảm bảo cửa sổ không phải là cửa sổ chính của chương trình
+            if win.title != main_window_title:
+                try:
+                    # Kích hoạt cửa sổ
+                    win.activate()
+                    print(f"Đã chuyển đến và kích hoạt cửa sổ: {win.title}")
+
+                    # Đóng cửa sổ
+                    win.close()
+                    print(f"Đã đóng cửa sổ: {win.title}")
+
                     # Cập nhật danh sách các cửa sổ đang mở
                     update_profile_listbox()
-                else:
-                    print(f"Cửa sổ thay thế '{chrome_windows[1].title}' không nằm trong danh sách các cửa sổ đang mở.")
-            else:
-                print("Không có cửa sổ thay thế để đóng.")
+                    return  # Kết thúc sau khi đóng thành công cửa sổ
+                except Exception as e:
+                    print(f"Lỗi khi đóng cửa sổ: {e}")
+
+        # Nếu không tìm thấy cửa sổ phù hợp để đóng
+        print("Không tìm thấy cửa sổ phù hợp để đóng.")
     else:
-        print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào để đóng.")
+        print("Không tìm thấy cửa sổ Chrome hoặc Cent Browser nào để đóng.")
 
 def switch_tab_chrome():
     global current_window_index
@@ -736,10 +727,6 @@ maximize_button.pack(side=tk.LEFT, padx=5, anchor='w')
 switch_tab_button = ttk.Button(row2_control_frame, text="Chuyển Tab", command=switch_tab_chrome)
 switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
-# Gắn nút "Đóng cửa sổ gần nhất" với hàm close_latest_chrome
-close_latest_button = ttk.Button(row2_control_frame, text="Đóng cửa sổ gần nhất", command=close_latest_chrome)
-close_latest_button.pack(side=tk.LEFT, padx=5, anchor='w')
-
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
 minimize_button = ttk.Button(row3_control_frame, text="Thu nhỏ", command=minimize_selected_chrome)
 minimize_button.pack(side=tk.LEFT, padx=5, anchor='w')
@@ -747,6 +734,10 @@ minimize_button.pack(side=tk.LEFT, padx=5, anchor='w')
 # Gắn nút "Khôi Phục" với hàm restore_selected_chrome
 restore_button = ttk.Button(row3_control_frame, text="Khôi Phục", command=restore_selected_chrome)
 restore_button.pack(side=tk.LEFT, padx=5, anchor='w')
+
+# Gắn nút "Đóng" với hàm close_chrome_window
+close_button = ttk.Button(row3_control_frame, text="Đóng", command=close_chrome_window)
+close_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Frame for displaying Profile đang mở
 open_profile_frame = ttk.Frame(profiles_frame, borderwidth=2, relief="groove")
