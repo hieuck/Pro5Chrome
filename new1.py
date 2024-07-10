@@ -619,7 +619,6 @@ def restore_selected_chrome():
     else:
         print("Vui lòng chọn một hồ sơ để khôi phục.")
 
-
 # Hàm để đóng cửa sổ Chrome hoặc Cent Browser
 def close_chrome_window():
     # Lấy title của cửa sổ chính của chương trình
