@@ -453,9 +453,6 @@ profiles_label.pack(side=tk.TOP, padx=5, pady=5)
 profiles_listbox = tk.Listbox(show_listbox_frame, selectmode=tk.SINGLE, height=5, font=("Helvetica", 10))
 profiles_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-# Thêm các profile vào Listbox
-update_listbox()
-
 # Hàm để chọn profile khi click chuột trái vào Listbox
 def on_left_click(event):
     # Xác định vị trí của con trỏ chuột
@@ -1050,6 +1047,7 @@ root.protocol("WM_DELETE_WINDOW", on_close)
 
 # Hàm để cập nhật danh sách profile khi khởi động
 update_profile_listbox()
+update_listbox()
 
 # Chạy GUI
 root.mainloop()
