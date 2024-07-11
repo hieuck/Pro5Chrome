@@ -55,15 +55,15 @@ center_buttons_frame.pack(anchor="center")
 
 # Nút để mở config.json
 open_config_button = ttk.Button(center_buttons_frame, text="Mở config.json", command=open_config_file)
-open_config_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
+open_config_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
 
 # Nút để mở profiles.json
 open_profiles_button = ttk.Button(center_buttons_frame, text="Mở profiles.json", command=open_profiles_file)
-open_profiles_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
+open_profiles_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
 
 # Nút để mở URL.json
 open_url_button = ttk.Button(center_buttons_frame, text="Mở URL.json", command=open_url_file)
-open_url_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
+open_url_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
 
 # ------------------------------------------------------------
 # End Nút để mở các tệp profiles.json, config.json và URL.json
