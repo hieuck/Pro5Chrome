@@ -14,6 +14,7 @@ import os
 import time
 import pygetwindow as gw
 import pywinauto
+import psutil
 
 # -----------------------------------------------------------------
 # --------------------Copyright (c) 2024 hieuck--------------------
@@ -79,7 +80,8 @@ default_chrome_path = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
 # Cấu hình mặc định
 DEFAULT_CONFIG = {
     "always_on_top": False,
-    "chrome_paths": ["C:/Program Files/Google/Chrome/Application/chrome.exe"]
+    "chrome_paths": ["C:/Program Files/Google/Chrome/Application/chrome.exe"],
+    "chrome_path": "C:/Program Files/Google/Chrome/Application/chrome.exe"
 }
 
 # Hàm chuẩn hóa đường dẫn
@@ -580,6 +582,26 @@ profiles_listbox.bind("<Button-3>", on_right_click)
 # Start Hàm tương tác profile
 # ---------------------------
 
+def find_chrome_window_by_profile(profile):
+    use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
+    if 'chrome.exe' not in use_chrome_path.lower():
+        use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
+    profile_directory = f"--profile-directory=Profile {profile}"
+    
+    for proc in psutil.process_iter(attrs=['pid', 'name', 'cmdline']):
+        if proc.info['name'] == 'chrome.exe' or proc.info['name'] == 'CentBrowser.exe':
+            try:
+                if any(profile_directory in arg for arg in proc.info['cmdline']):
+                    print(f"Found process with profile: {proc.info['cmdline']}")
+                    windows = gw.getWindowsWithTitle(proc.info['name'])
+                    for win in windows:
+                        if proc.pid == win._hWnd:
+                            return win
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as e:
+                print(f"Error accessing process info: {e}")
+                continue
+    return None
+
 # Hàm để mở toàn bộ Chrome với các profile
 @update_listbox_decorator
 def open_all_chrome_profiles():
@@ -617,13 +639,17 @@ def find_chrome_window(profile_name):
 @update_listbox_decorator
 def maximize_selected_chrome():
     index = profiles_listbox.curselection()
+    print(f"Current selection index: {index}")  # Debug: Xem chỉ mục lựa chọn hiện tại
     if index:
-        selected_profile = profiles_listbox.get(index)
-        
-        # Tìm cửa sổ Chrome hoặc CentBrowser
+        selected_profile = profiles_listbox.get(index[0])  # Lấy giá trị từ chỉ mục đầu tiên
+        print(f"Selected profile: {selected_profile}")  # Debug: Xem giá trị profile được chọn
         chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
-            chrome_window.maximize()
+            try:
+                chrome_window.maximize()  # Tối đa hóa cửa sổ
+                print(f"Đã phóng to cửa sổ cho hồ sơ '{selected_profile}'")
+            except Exception as e:
+                print(f"Lỗi khi phóng to cửa sổ: {e}")
         else:
             print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
     else:
