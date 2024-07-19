@@ -15,6 +15,7 @@ import time
 import pygetwindow as gw
 import pywinauto
 import psutil
+import webbrowser
 
 # -----------------------------------------------------------------
 # --------------------Copyright (c) 2024 hieuck--------------------
