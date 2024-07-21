@@ -437,7 +437,6 @@ class AutocompleteCombobox(ttk.Combobox):
         self._hit_index = 0
         self.position = 0
         self.bind('<KeyRelease>', self.handle_keyrelease)
-        self.bind('<Control-a>', self.select_all)
         self.bind('<Delete>', self.handle_delete)
         self['values'] = self._completion_list
 
@@ -466,11 +465,6 @@ class AutocompleteCombobox(ttk.Combobox):
             self.handle_delete(event)
         else:
             self.autocomplete()
-
-    def select_all(self, event=None):
-        self.select_range(0, tk.END)  # Chọn tất cả văn bản trong trường nhập
-        self.icursor(tk.END)  # Đưa con trỏ về cuối văn bản
-        return 'break'
 
     def handle_delete(self, event=None):
         self.delete(0, tk.END)  # Xóa tất cả văn bản trong trường nhập
