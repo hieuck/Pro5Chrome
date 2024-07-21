@@ -462,14 +462,18 @@ class AutocompleteCombobox(ttk.Combobox):
     def handle_keyrelease(self, event):
         if event.keysym in ('BackSpace', 'Left', 'Right', 'Up', 'Down'):
             return
-        self.autocomplete()
+        if event.keysym == 'Delete':
+            self.handle_delete(event)
+        else:
+            self.autocomplete()
 
     def select_all(self, event=None):
-        self.select_range(0, tk.END)
+        self.select_range(0, tk.END)  # Chọn tất cả văn bản trong trường nhập
+        self.icursor(tk.END)  # Đưa con trỏ về cuối văn bản
         return 'break'
 
     def handle_delete(self, event):
-        self.delete(0, tk.END)
+        self.delete(0, tk.END)  # Xóa tất cả văn bản trong trường nhập
         return 'break'
 
 # Tạo frame chứa Combobox và Entry cho Profile Chrome
