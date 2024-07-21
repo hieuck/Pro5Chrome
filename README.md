@@ -1,3 +1,3 @@
 # Pro5Chrome
  
-![image](https://github.com/user-attachments/assets/4710a2b7-cc60-49a9-b6bb-29e5fd12c85b)
+![image](https://github.com/user-attachments/assets/cb6d695a-a7d1-42e6-b58e-97641609331e)
