@@ -160,3 +160,5 @@ cython_debug/
 #.idea/
 *.json
 /chrome-win64
+chrome-win64.zip
+chromedriver-win64.zip

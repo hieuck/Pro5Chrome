@@ -370,7 +370,7 @@ def open_chrome_and_add_profile():
             profiles.append(selected_profile)
             profiles.sort()  # Sắp xếp theo thứ tự ABC
             save_profiles(profiles)
-            profile_dropdown['values'] = profiles
+            profile_dropdown.set_completion_list(profiles)  # Cập nhật danh sách cho AutocompleteCombobox
             update_listbox()
         
         # Lưu đường dẫn Chrome vào danh sách vào config
@@ -429,7 +429,49 @@ def close_chrome():
 def open_chrome_on_enter(event=None):
     if event and event.keysym == 'Return':
         open_chrome_and_add_profile()
-    
+
+class AutocompleteCombobox(ttk.Combobox):
+    def set_completion_list(self, completion_list):
+        self._completion_list = sorted(completion_list)
+        self._hits = []
+        self._hit_index = 0
+        self.position = 0
+        self.bind('<KeyRelease>', self.handle_keyrelease)
+        self.bind('<Control-a>', self.select_all)
+        self.bind('<Delete>', self.handle_delete)
+        self['values'] = self._completion_list
+
+    def autocomplete(self, delta=0):
+        if delta:
+            self.delete(self.position, tk.END)
+        else:
+            self.position = len(self.get())
+
+        _hits = [item for item in self._completion_list if item.lower().startswith(self.get().lower())]
+
+        if _hits != self._hits:
+            self._hit_index = 0
+            self._hits = _hits
+
+        if _hits:
+            self._hit_index = (self._hit_index + delta) % len(_hits)
+            self.delete(0, tk.END)
+            self.insert(0, _hits[self._hit_index])
+            self.select_range(self.position, tk.END)
+
+    def handle_keyrelease(self, event):
+        if event.keysym in ('BackSpace', 'Left', 'Right', 'Up', 'Down'):
+            return
+        self.autocomplete()
+
+    def select_all(self, event=None):
+        self.select_range(0, tk.END)
+        return 'break'
+
+    def handle_delete(self, event):
+        self.delete(0, tk.END)
+        return 'break'
+
 # Tạo frame chứa Combobox và Entry cho Profile Chrome
 configs_frame = ttk.Frame(root, borderwidth=2, relief="groove")
 configs_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -440,8 +482,8 @@ profile_label.pack(side=tk.LEFT, padx=5)
 
 # Combobox để chọn hoặc nhập profile
 profile_var = tk.StringVar()
-profile_dropdown = ttk.Combobox(configs_frame, textvariable=profile_var)
-profile_dropdown['values'] = profiles
+profile_dropdown = AutocompleteCombobox(configs_frame, textvariable=profile_var)
+profile_dropdown.set_completion_list(profiles)
 profile_dropdown.pack(side=tk.LEFT, padx=5)
 
 # Nút Mở Chrome và thêm đường dẫn nếu cần
