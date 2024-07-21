@@ -472,7 +472,7 @@ class AutocompleteCombobox(ttk.Combobox):
         self.icursor(tk.END)  # Đưa con trỏ về cuối văn bản
         return 'break'
 
-    def handle_delete(self, event):
+    def handle_delete(self, event=None):
         self.delete(0, tk.END)  # Xóa tất cả văn bản trong trường nhập
         return 'break'
 
