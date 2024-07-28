@@ -1080,15 +1080,40 @@ selected_profile = tk.StringVar()
 def login_google_selenium(email, password, profile):
     global driver
     chrome_options = ChromeOptions()
+    
+    # Sử dụng đường dẫn chrome đã được cung cấp hoặc tìm kiếm mặc định
     use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
-    if 'chrome.exe' not in use_chrome_path.lower():
-        use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
+    
+    # Đường dẫn đến thư mục chứa chrome.exe và chromedriver.exe
+    program_directory = os.path.dirname(os.path.abspath(__file__))
+    chrome_folder = os.path.join(program_directory, 'chrome-win64')
+    chromedriver_path = os.path.join(chrome_folder, 'chromedriver.exe')
+    chrome_exe_path = os.path.join(chrome_folder, 'chrome.exe')
 
-    chrome_options.binary_location = use_chrome_path
+    # Kiểm tra sự tồn tại của chromedriver.exe trong thư mục chrome-win64 trước
+    if os.path.isfile(chromedriver_path):
+        # Nếu tồn tại chromedriver.exe, sử dụng chrome.exe từ thư mục này
+        if os.path.isfile(chrome_exe_path):
+            use_chrome_path = chrome_exe_path
+        else:
+            print("Không tìm thấy tệp chrome.exe trong thư mục chrome-win64")
+            return
+    else:
+        # Nếu không tìm thấy chromedriver.exe, sử dụng đường dẫn đã cung cấp
+        if not use_chrome_path or 'chrome.exe' not in use_chrome_path.lower():
+            use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
 
-    service = ChromeService(executable_path=ChromeDriverManager().install())
+    # Kiểm tra lại sự tồn tại của tệp chrome.exe
+    if os.path.isfile(use_chrome_path):
+        chrome_options.binary_location = use_chrome_path
+    else:
+        print("Không tìm thấy tệp chrome.exe trong đường dẫn đã cung cấp")
+        return
 
     try:
+        # Tạo dịch vụ Chrome với chromedriver
+        service = ChromeService(executable_path=chromedriver_path if os.path.isfile(chromedriver_path) else ChromeDriverManager().install())
+        # Khởi động trình duyệt Chrome với các tùy chọn đã thiết lập
         driver = webdriver.Chrome(service=service, options=chrome_options)
         
         driver.get('https://accounts.google.com')
