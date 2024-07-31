@@ -623,6 +623,48 @@ profiles_listbox.bind("<Button-3>", on_right_click)
 # Start Hàm tương tác profile
 # ---------------------------
 
+# Thêm hàm sắp xếp cửa sổ
+def arrange_chrome_windows(num_windows_per_row=5):
+    main_window_title = root.title()  # Đảm bảo biến main_window_title đã được định nghĩa
+
+    # Tìm tất cả các cửa sổ Chrome hoặc CentBrowser
+    chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
+
+    if chrome_windows:
+        # Loại bỏ cửa sổ chính của chương trình khỏi danh sách
+        chrome_windows = [win for win in chrome_windows if win.title != main_window_title]
+
+        # Sắp xếp các cửa sổ theo thứ tự đảo ngược của thứ tự chúng được mở
+        chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
+
+        # Kích thước mỗi cửa sổ và khoảng cách giữa các cửa sổ
+        window_width = 800
+        window_height = 600
+        margin_x = 20
+        margin_y = 20
+
+        # Sắp xếp và di chuyển các cửa sổ
+        for index, win in enumerate(chrome_windows):
+            row = index // num_windows_per_row
+            col = index % num_windows_per_row
+
+            # Tính toán vị trí của cửa sổ
+            x = col * (window_width + margin_x)
+            y = row * (window_height + margin_y)
+
+            # Di chuyển và thay đổi kích thước cửa sổ
+            try:
+                win.moveTo(x, y)
+                win.resizeTo(window_width, window_height)
+                print(f"Cửa sổ {win.title} đã được sắp xếp tại ({x}, {y})")
+            except Exception as e:
+                print(f"Lỗi khi di chuyển hoặc thay đổi kích thước cửa sổ {win.title}: {e}")
+
+        print("Đã sắp xếp các cửa sổ Chrome thành công.")
+    else:
+        print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào.")
+
+# Tạo hàm tìm kiếm và xử lý cửa sổ Chrome theo profile
 def find_chrome_window_by_profile(profile):
     use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
     if 'chrome.exe' not in use_chrome_path.lower():
@@ -657,6 +699,7 @@ def open_all_chrome_profiles():
         profile_directory = f"--profile-directory=Profile {profile}"
         subprocess.Popen([use_chrome_path, profile_directory])
 
+# Hàm tìm cửa sổ Chrome theo profile
 def find_chrome_window(profile_name):
     main_window_title = root.title()  # Lấy title của cửa sổ chính của chương trình
     all_windows = gw.getAllTitles()
@@ -677,6 +720,7 @@ def find_chrome_window(profile_name):
         return filtered_windows[0]  # Trả về cửa sổ đầu tiên trong danh sách đã loại bỏ cửa sổ chính
     else:
         return None
+
 @update_listbox_decorator
 def maximize_selected_chrome():
     index = profiles_listbox.curselection()
@@ -840,6 +884,10 @@ maximize_button.pack(side=tk.LEFT, padx=5, anchor='w')
 # Gắn nút "Chuyển Tab" với hàm switch_tab_chrome
 switch_tab_button = ttk.Button(row2_control_frame, text="Chuyển Tab", command=switch_tab_chrome)
 switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
+
+# Gắn nút "Sắp xếp" với hàm arrange_chrome_windows
+arrange_button = ttk.Button(row2_control_frame, text="Sắp xếp", command=arrange_chrome_windows)
+arrange_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
 minimize_button = ttk.Button(row3_control_frame, text="Thu nhỏ", command=minimize_selected_chrome)
