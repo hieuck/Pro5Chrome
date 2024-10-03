@@ -630,7 +630,7 @@ def arrange_chrome_windows(num_windows_per_row=5):
 
     # Lấy các giá trị đầu vào từ các ô nhập, nếu nhập không hợp lệ sẽ sử dụng giá trị mặc định
     try:
-        window_width = int(width_entry.get()) if width_entry.get() else 800  # Giá trị mặc định 800
+        window_width = int(width_entry.get()) if width_entry.get() else 505  # Giá trị mặc định 505
         window_height = int(height_entry.get()) if height_entry.get() else 600  # Giá trị mặc định 600
         margin = int(margin_entry.get()) if margin_entry.get() else 5  # Giá trị mặc định 5
     except ValueError:
