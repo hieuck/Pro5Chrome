@@ -677,6 +677,11 @@ def arrange_chrome_windows():
 
         # Tính số hàng dựa trên số cột
         num_rows = (len(chrome_windows) + num_columns - 1) // num_columns  # Tính số hàng cần thiết
+        
+        # Kiểm tra xem num_rows có bằng 0 không
+        if num_rows == 0:
+            print("Không có cửa sổ để sắp xếp.")
+            return  # Dừng hàm nếu không có cửa sổ
 
         # Tính kích thước mới cho cửa sổ
         window_width = (screen_width - (num_columns - 1) * margin) // num_columns
@@ -948,7 +953,7 @@ columns_entry = ttk.Entry(columns_frame, width=5)
 columns_entry.pack(side=tk.RIGHT, padx=5)
 
 # Đặt giá trị mặc định cho ô nhập liệu
-columns_entry.insert(0, "8")  # Giá trị mặc định là 8
+columns_entry.insert(0, "2")  # Giá trị mặc định là 2
 
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
 minimize_button = ttk.Button(row3_control_frame, text="Thu nhỏ", command=minimize_selected_chrome)
