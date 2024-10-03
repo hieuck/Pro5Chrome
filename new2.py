@@ -267,7 +267,7 @@ def open_user_data_folder():
             chrome_folder_path = os.path.dirname(use_chrome_path)
             user_data_path = os.path.join(chrome_folder_path, 'User Data')  # Đường dẫn đến thư mục User Data của Cent Browser
         
-            print(f"Cent Browser User Data path: {user_data_path}")
+            print(f"Cent Browser User Data path: {user_data_path.replace('\\', '/')}")
         
             if not os.path.exists(user_data_path):
                 print(f"Thư mục User Data không tồn tại: {user_data_path}")
@@ -646,6 +646,9 @@ def delete_selected_profile():
             selected_user_data_folder_name = f"Profile {selected_profile}"  # Ví dụ: Profile a
             selected_user_data_folder_path = os.path.join(user_data_path, selected_user_data_folder_name)
 
+            # Chuẩn hóa đường dẫn bằng os.path.normpath
+            selected_user_data_folder_path = os.path.normpath(selected_user_data_folder_path)
+
             # Kiểm tra xem thư mục có tồn tại không trước khi xóa
             if os.path.exists(selected_user_data_folder_path):
                 try:
@@ -657,13 +660,13 @@ def delete_selected_profile():
                 except PermissionError as e:
                     close_chrome_window()
                     print(f"Không thể xóa thư mục: {e}. Có thể một tệp đang được sử dụng.")
-                    # Tùy chọn: chờ một chút và thử lại
                     time.sleep(1)
                     try:
                         close_chrome_window()
                         shutil.rmtree(selected_user_data_folder_path)  # Thử lại lần nữa
                         print(f"Đã xóa thư mục User Data: {selected_user_data_folder_path}")
                     except Exception as e:
+                        close_chrome_window()
                         print(f"Vẫn không thể xóa: {e}")
             else:
                 print(f"Thư mục User Data không tồn tại: {selected_user_data_folder_path}")
