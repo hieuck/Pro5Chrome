@@ -624,8 +624,18 @@ profiles_listbox.bind("<Button-3>", on_right_click)
 # ---------------------------
 
 # Thêm hàm sắp xếp cửa sổ
+# Define function to arrange windows with dynamic inputs for size and margin
 def arrange_chrome_windows(num_windows_per_row=5):
     main_window_title = root.title()  # Đảm bảo biến main_window_title đã được định nghĩa
+
+    # Lấy các giá trị đầu vào từ các ô nhập, nếu nhập không hợp lệ sẽ sử dụng giá trị mặc định
+    try:
+        window_width = int(width_entry.get()) if width_entry.get() else 200  # Giá trị mặc định 200
+        window_height = int(height_entry.get()) if height_entry.get() else 100  # Giá trị mặc định 100
+        margin = int(margin_entry.get()) if margin_entry.get() else 5  # Giá trị mặc định 5
+    except ValueError:
+        print("Vui lòng nhập số hợp lệ cho kích thước và giãn cách.")
+        return
 
     # Tìm tất cả các cửa sổ Chrome hoặc CentBrowser
     chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
@@ -637,20 +647,14 @@ def arrange_chrome_windows(num_windows_per_row=5):
         # Sắp xếp các cửa sổ theo thứ tự đảo ngược của thứ tự chúng được mở
         chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
 
-        # Kích thước mỗi cửa sổ và khoảng cách giữa các cửa sổ
-        window_width = 800
-        window_height = 600
-        margin_x = 20
-        margin_y = 20
-
         # Sắp xếp và di chuyển các cửa sổ
         for index, win in enumerate(chrome_windows):
             row = index // num_windows_per_row
             col = index % num_windows_per_row
 
             # Tính toán vị trí của cửa sổ
-            x = col * (window_width + margin_x)
-            y = row * (window_height + margin_y)
+            x = col * (window_width + margin)
+            y = row * (window_height + margin)
 
             # Di chuyển và thay đổi kích thước cửa sổ
             try:
@@ -853,21 +857,29 @@ def switch_tab_chrome():
     else:
         print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào.")
 
-# Frame chứa các nút điều khiển
-control_frame  = ttk.Frame(profiles_frame)
-control_frame .pack(side=tk.LEFT, padx=5, anchor='w')
+# Frame chứa tất cả các thành phần điều khiển
+container_frame = ttk.Frame(profiles_frame, borderwidth=2, relief="solid")  # Tạo frame có khung
+container_frame.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH, expand=True, anchor='w')  # Đóng khung và giãn cách
+
+# Tạo frame chứa các nút điều khiển
+control_frame = ttk.Frame(container_frame)
+control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
 # Tạo frame cho hàng đầu tiên
-row1_control_frame = ttk.Frame(control_frame )
+row1_control_frame = ttk.Frame(control_frame)
 row1_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
 # Tạo frame cho hàng thứ hai
-row2_control_frame = ttk.Frame(control_frame )
+row2_control_frame = ttk.Frame(control_frame)
 row2_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
 # Tạo frame cho hàng thứ ba
-row3_control_frame = ttk.Frame(control_frame )
-row3_control_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, anchor='w')
+row3_control_frame = ttk.Frame(control_frame)
+row3_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
+
+# Tạo frame cho các ô nhập liệu (kích thước và giãn cách)
+size_frame = ttk.Frame(control_frame)
+size_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
 # Nút Đăng Nhập Google cho Listbox
 login_button_listbox = ttk.Button(row1_control_frame, text="Đăng Nhập Google (Danh sách)", command=login_google_from_listbox)
@@ -889,6 +901,21 @@ switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
 arrange_button = ttk.Button(row2_control_frame, text="Sắp xếp", command=arrange_chrome_windows)
 arrange_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
+# Nhập chiều rộng
+ttk.Label(size_frame, text="Rộng:").pack(side=tk.LEFT, padx=5)
+width_entry = ttk.Entry(size_frame, width=5)
+width_entry.pack(side=tk.LEFT, padx=5)
+
+# Nhập chiều cao
+ttk.Label(size_frame, text="Cao:").pack(side=tk.LEFT, padx=5)
+height_entry = ttk.Entry(size_frame, width=5)
+height_entry.pack(side=tk.LEFT, padx=5)
+
+# Nhập khoảng giãn cách
+ttk.Label(size_frame, text="Giãn cách:").pack(side=tk.LEFT, padx=5)
+margin_entry = ttk.Entry(size_frame, width=5)
+margin_entry.pack(side=tk.LEFT, padx=5)
+
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
 minimize_button = ttk.Button(row3_control_frame, text="Thu nhỏ", command=minimize_selected_chrome)
 minimize_button.pack(side=tk.LEFT, padx=5, anchor='w')
@@ -900,6 +927,7 @@ restore_button.pack(side=tk.LEFT, padx=5, anchor='w')
 # Gắn nút "Đóng" với hàm close_chrome_window
 close_button = ttk.Button(row3_control_frame, text="Đóng", command=close_chrome_window)
 close_button.pack(side=tk.LEFT, padx=5, anchor='w')
+
 
 # Frame for displaying Profile đang mở
 open_profile_frame = ttk.Frame(profiles_frame, borderwidth=2, relief="groove")
