@@ -624,21 +624,28 @@ profiles_listbox.bind("<Button-3>", on_right_click)
 # ---------------------------
 
 # Thêm hàm sắp xếp cửa sổ
-# Define function to arrange windows with dynamic inputs for size and margin
-def arrange_chrome_windows(num_windows_per_row=5):
+# Define function to arrange windows with dynamic inputs for size, margin, columns, and rows
+def arrange_chrome_windows():
     main_window_title = root.title()  # Đảm bảo biến main_window_title đã được định nghĩa
+
+    # Tìm tất cả các cửa sổ Chrome hoặc CentBrowser
+    chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
 
     # Lấy các giá trị đầu vào từ các ô nhập, nếu nhập không hợp lệ sẽ sử dụng giá trị mặc định
     try:
         window_width = int(width_entry.get()) if width_entry.get() else 505  # Giá trị mặc định 505
         window_height = int(height_entry.get()) if height_entry.get() else 600  # Giá trị mặc định 600
         margin = int(margin_entry.get()) if margin_entry.get() else 5  # Giá trị mặc định 5
-    except ValueError:
-        print("Vui lòng nhập số hợp lệ cho kích thước và giãn cách.")
-        return
+        num_windows_per_row = int(columns_entry.get()) if columns_entry.get() else 4  # Giá trị mặc định số cột là 4
 
-    # Tìm tất cả các cửa sổ Chrome hoặc CentBrowser
-    chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
+        # Thiết lập num_rows dựa trên chrome_windows đã được tìm thấy
+        if chrome_windows:
+            num_rows = int(rows_entry.get()) if rows_entry.get() else len(chrome_windows) // num_windows_per_row + 1  # Giá trị mặc định tính theo số cửa sổ
+        else:
+            num_rows = 5  # Nếu không có cửa sổ nào, mặc định số hàng là 5
+    except ValueError:
+        print("Vui lòng nhập số hợp lệ cho kích thước, giãn cách, số cột và số hàng.")
+        return
 
     if chrome_windows:
         # Loại bỏ cửa sổ chính của chương trình khỏi danh sách
@@ -646,6 +653,10 @@ def arrange_chrome_windows(num_windows_per_row=5):
 
         # Sắp xếp các cửa sổ theo thứ tự đảo ngược của thứ tự chúng được mở
         chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
+
+        # Giới hạn số lượng cửa sổ theo số hàng được nhập
+        max_windows = num_windows_per_row * num_rows
+        chrome_windows = chrome_windows[:max_windows]
 
         # Sắp xếp và di chuyển các cửa sổ
         for index, win in enumerate(chrome_windows):
@@ -905,6 +916,20 @@ switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
 arrange_button = ttk.Button(entry_frame, text="Sắp xếp", command=arrange_chrome_windows)
 arrange_button.pack(side=tk.TOP, padx=5, pady=5, anchor='center')
 
+# Nhập liệu cho "S.Cột"
+columns_frame = ttk.Frame(entry_frame)
+columns_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
+ttk.Label(columns_frame, text="S.Cột:").pack(side=tk.LEFT, padx=5)
+columns_entry = ttk.Entry(columns_frame, width=5)
+columns_entry.pack(side=tk.RIGHT, padx=5)
+
+# Nhập liệu cho "S.Hàng"
+rows_frame = ttk.Frame(entry_frame)
+rows_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
+ttk.Label(rows_frame, text="S.Hàng:").pack(side=tk.LEFT, padx=5)
+rows_entry = ttk.Entry(rows_frame, width=5)
+rows_entry.pack(side=tk.RIGHT, padx=5)
+
 # Nhập liệu cho "Rộng"
 width_frame = ttk.Frame(entry_frame)
 width_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
@@ -915,7 +940,7 @@ width_entry.pack(side=tk.RIGHT, padx=5)
 # Nhập liệu cho "Cao"
 height_frame = ttk.Frame(entry_frame)
 height_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
-ttk.Label(height_frame, text="C.Cao:  ").pack(side=tk.LEFT, padx=5)
+ttk.Label(height_frame, text="C.Cao:").pack(side=tk.LEFT, padx=5)
 height_entry = ttk.Entry(height_frame, width=5)
 height_entry.pack(side=tk.RIGHT, padx=5)
 
