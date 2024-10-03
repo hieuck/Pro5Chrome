@@ -630,12 +630,8 @@ import screeninfo  # Đảm bảo rằng bạn đã cài đặt thư viện này
 def arrange_chrome_windows():
     main_window_title = root.title()  # Đảm bảo biến main_window_title đã được định nghĩa
 
-    # Lấy các giá trị đầu vào từ các ô nhập, nếu nhập không hợp lệ sẽ sử dụng giá trị mặc định
-    try:
-        margin = int(margin_entry.get()) if margin_entry.get() else 5  # Giá trị mặc định 5
-    except ValueError:
-        print("Vui lòng nhập số hợp lệ cho giãn cách.")
-        return
+    # Giá trị mặc định cho margin
+    margin = 0  # Giá trị giãn cách mặc định là 0
 
     # Lấy kích thước màn hình
     screen = screeninfo.get_monitors()[0]  # Lấy màn hình đầu tiên
@@ -653,7 +649,8 @@ def arrange_chrome_windows():
         chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
 
         # Tính số cột và hàng dựa trên kích thước màn hình
-        num_columns = max(screen_width // (505 + margin), 1)  # 505 là kích thước cửa sổ mặc định
+        min_window_width = 505  # 505 là kích thước cửa sổ mặc định
+        num_columns = max(screen_width // (min_window_width  + margin), 1)
         num_rows = (len(chrome_windows) + num_columns - 1) // num_columns  # Tính số hàng cần thiết
 
         # Tính kích thước mới cho cửa sổ
@@ -890,14 +887,6 @@ row1_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 row2_control_frame = ttk.Frame(control_frame)
 row2_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
-# Khung bao quanh entry_frame để làm khung cho các ô nhập liệu
-entry_frame_container = ttk.Frame(container_frame, borderwidth=2, relief="solid")  # Tạo khung cho các ô nhập liệu
-entry_frame_container.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y, expand=False, anchor='ne')  # Đặt nó ở bên phải trong khung container
-
-# Frame con để chứa các ô nhập liệu
-entry_frame = ttk.Frame(entry_frame_container)  # Đặt entry_frame bên trong khung mới
-entry_frame.pack(side=tk.TOP, padx=5, pady=5)
-
 # Tạo frame cho hàng thứ ba
 row3_control_frame = ttk.Frame(control_frame)
 row3_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
@@ -921,41 +910,6 @@ switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
 # Gắn nút "Sắp xếp" với hàm arrange_chrome_windows
 arrange_button = ttk.Button(row2_control_frame, text="Sắp xếp", command=arrange_chrome_windows)
 arrange_button.pack(side=tk.TOP, padx=5, pady=5, anchor='center')
-
-# Nhập liệu cho "S.Cột"
-columns_frame = ttk.Frame(entry_frame)
-columns_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
-ttk.Label(columns_frame, text="S.Cột:").pack(side=tk.LEFT, padx=5)
-columns_entry = ttk.Entry(columns_frame, width=5)
-columns_entry.pack(side=tk.RIGHT, padx=5)
-
-# Nhập liệu cho "S.Hàng"
-rows_frame = ttk.Frame(entry_frame)
-rows_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
-ttk.Label(rows_frame, text="S.Hàng:").pack(side=tk.LEFT, padx=5)
-rows_entry = ttk.Entry(rows_frame, width=5)
-rows_entry.pack(side=tk.RIGHT, padx=5)
-
-# Nhập liệu cho "Rộng"
-width_frame = ttk.Frame(entry_frame)
-width_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
-ttk.Label(width_frame, text="C.Rộng:").pack(side=tk.LEFT, padx=5)
-width_entry = ttk.Entry(width_frame, width=5)
-width_entry.pack(side=tk.RIGHT, padx=5)
-
-# Nhập liệu cho "Cao"
-height_frame = ttk.Frame(entry_frame)
-height_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
-ttk.Label(height_frame, text="C.Cao:").pack(side=tk.LEFT, padx=5)
-height_entry = ttk.Entry(height_frame, width=5)
-height_entry.pack(side=tk.RIGHT, padx=5)
-
-# Nhập liệu cho "Giãn cách"
-margin_frame = ttk.Frame(entry_frame)
-margin_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
-ttk.Label(margin_frame, text="G.Cách:").pack(side=tk.LEFT, padx=5)
-margin_entry = ttk.Entry(margin_frame, width=5)
-margin_entry.pack(side=tk.RIGHT, padx=5)
 
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
 minimize_button = ttk.Button(row3_control_frame, text="Thu nhỏ", command=minimize_selected_chrome)
