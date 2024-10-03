@@ -654,10 +654,12 @@ def delete_selected_profile():
                     update_listbox()
                     update_profile_count()
                 except PermissionError as e:
+                    close_chrome_window()
                     print(f"Không thể xóa thư mục: {e}. Có thể một tệp đang được sử dụng.")
                     # Tùy chọn: chờ một chút và thử lại
                     time.sleep(1)
                     try:
+                        close_chrome_window()
                         shutil.rmtree(selected_user_data_folder_path)  # Thử lại lần nữa
                         print(f"Đã xóa thư mục User Data: {selected_user_data_folder_path}")
                     except Exception as e:
