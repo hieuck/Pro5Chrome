@@ -623,7 +623,6 @@ profiles_listbox.bind("<Button-3>", on_right_click)
 # Start Hàm tương tác profile
 # ---------------------------
 
-# Thêm hàm sắp xếp cửa sổ
 import screeninfo  # Đảm bảo rằng bạn đã cài đặt thư viện này
 
 # Define function to arrange windows evenly on the screen
@@ -638,6 +637,10 @@ def arrange_chrome_windows():
     screen_width = screen.width
     screen_height = screen.height
 
+    # Loại bỏ chiều cao của thanh tác vụ (thường là 40px nhưng có thể khác tùy thuộc vào thiết lập của người dùng)
+    taskbar_height = 40  # Giả định chiều cao của thanh tác vụ
+    usable_height = screen_height - taskbar_height  # Chiều cao có thể sử dụng
+
     # Tìm tất cả các cửa sổ Chrome hoặc CentBrowser
     chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
 
@@ -650,12 +653,12 @@ def arrange_chrome_windows():
 
         # Tính số cột và hàng dựa trên kích thước màn hình
         min_window_width = 505  # 505 là kích thước cửa sổ mặc định
-        num_columns = max(screen_width // (min_window_width  + margin), 1)
+        num_columns = max(screen_width // (min_window_width + margin), 1)
         num_rows = (len(chrome_windows) + num_columns - 1) // num_columns  # Tính số hàng cần thiết
 
         # Tính kích thước mới cho cửa sổ
         window_width = (screen_width - (num_columns - 1) * margin) // num_columns
-        window_height = (screen_height - (num_rows - 1) * margin) // num_rows
+        window_height = (usable_height - (num_rows - 1) * margin) // num_rows  # Sử dụng chiều cao có thể sử dụng
 
         # Giới hạn số lượng cửa sổ theo số hàng và cột
         max_windows = num_columns * num_rows
