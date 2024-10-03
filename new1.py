@@ -863,7 +863,7 @@ container_frame.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH, expand=True, 
 
 # Tạo frame chứa các nút điều khiển
 control_frame = ttk.Frame(container_frame)
-control_frame.pack(side=tk.TOP, pady=5, anchor='w')
+control_frame.pack(side=tk.LEFT, pady=5, anchor='w')
 
 # Tạo frame cho hàng đầu tiên
 row1_control_frame = ttk.Frame(control_frame)
@@ -873,9 +873,13 @@ row1_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 row2_control_frame = ttk.Frame(control_frame)
 row2_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
-# Frame con bên phải nút sắp xếp để chứa các ô nhập liệu
-entry_frame = ttk.Frame(row2_control_frame)
-entry_frame.pack(side=tk.RIGHT, padx=5, anchor='n')  # Đặt frame này ngay bên phải nút "Sắp xếp"
+# Khung bao quanh entry_frame để làm khung cho các ô nhập liệu
+entry_frame_container = ttk.Frame(container_frame, borderwidth=2, relief="solid")  # Tạo khung cho các ô nhập liệu
+entry_frame_container.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y, expand=False, anchor='ne')  # Đặt nó ở bên phải trong khung container
+
+# Frame con để chứa các ô nhập liệu
+entry_frame = ttk.Frame(entry_frame_container)  # Đặt entry_frame bên trong khung mới
+entry_frame.pack(side=tk.TOP, padx=5, pady=5)
 
 # Tạo frame cho hàng thứ ba
 row3_control_frame = ttk.Frame(control_frame)
@@ -898,8 +902,8 @@ switch_tab_button = ttk.Button(row2_control_frame, text="Chuyển Tab", command=
 switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Gắn nút "Sắp xếp" với hàm arrange_chrome_windows
-arrange_button = ttk.Button(row2_control_frame, text="Sắp xếp", command=arrange_chrome_windows)
-arrange_button.pack(side=tk.LEFT, padx=5, anchor='w')
+arrange_button = ttk.Button(entry_frame, text="Sắp xếp", command=arrange_chrome_windows)
+arrange_button.pack(side=tk.TOP, padx=5, anchor='w')
 
 # Nhập liệu cho "Rộng"
 width_frame = ttk.Frame(entry_frame)
