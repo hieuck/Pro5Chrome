@@ -630,8 +630,8 @@ def arrange_chrome_windows(num_windows_per_row=5):
 
     # Lấy các giá trị đầu vào từ các ô nhập, nếu nhập không hợp lệ sẽ sử dụng giá trị mặc định
     try:
-        window_width = int(width_entry.get()) if width_entry.get() else 200  # Giá trị mặc định 200
-        window_height = int(height_entry.get()) if height_entry.get() else 100  # Giá trị mặc định 100
+        window_width = int(width_entry.get()) if width_entry.get() else 800  # Giá trị mặc định 800
+        window_height = int(height_entry.get()) if height_entry.get() else 600  # Giá trị mặc định 600
         margin = int(margin_entry.get()) if margin_entry.get() else 5  # Giá trị mặc định 5
     except ValueError:
         print("Vui lòng nhập số hợp lệ cho kích thước và giãn cách.")
@@ -903,28 +903,28 @@ switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Gắn nút "Sắp xếp" với hàm arrange_chrome_windows
 arrange_button = ttk.Button(entry_frame, text="Sắp xếp", command=arrange_chrome_windows)
-arrange_button.pack(side=tk.TOP, padx=5, anchor='w')
+arrange_button.pack(side=tk.TOP, padx=5, pady=5, anchor='center')
 
 # Nhập liệu cho "Rộng"
 width_frame = ttk.Frame(entry_frame)
-width_frame.pack(side=tk.TOP, fill=tk.X, pady=2)
+width_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
 ttk.Label(width_frame, text="C.Rộng:").pack(side=tk.LEFT, padx=5)
 width_entry = ttk.Entry(width_frame, width=5)
-width_entry.pack(side=tk.LEFT, padx=5)
+width_entry.pack(side=tk.RIGHT, padx=5)
 
 # Nhập liệu cho "Cao"
 height_frame = ttk.Frame(entry_frame)
-height_frame.pack(side=tk.TOP, fill=tk.X, pady=2)
+height_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
 ttk.Label(height_frame, text="C.Cao:  ").pack(side=tk.LEFT, padx=5)
 height_entry = ttk.Entry(height_frame, width=5)
-height_entry.pack(side=tk.LEFT, padx=5)
+height_entry.pack(side=tk.RIGHT, padx=5)
 
 # Nhập liệu cho "Giãn cách"
 margin_frame = ttk.Frame(entry_frame)
-margin_frame.pack(side=tk.TOP, fill=tk.X, pady=2)
+margin_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
 ttk.Label(margin_frame, text="G.Cách:").pack(side=tk.LEFT, padx=5)
 margin_entry = ttk.Entry(margin_frame, width=5)
-margin_entry.pack(side=tk.LEFT, padx=5)
+margin_entry.pack(side=tk.RIGHT, padx=5)
 
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
 minimize_button = ttk.Button(row3_control_frame, text="Thu nhỏ", command=minimize_selected_chrome)
