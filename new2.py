@@ -363,6 +363,8 @@ def read_profiles():
 
 # Đọc danh sách profiles từ tệp
 profiles = read_profiles()
+profile_count = len(profiles)
+print(f"Số lượng profiles: {profile_count}")
 
 # Hàm để lưu danh sách profiles vào tệp
 def save_profiles(profiles):
@@ -380,6 +382,7 @@ def open_chrome_and_add_profile():
             save_profiles(profiles)
             profile_dropdown.set_completion_list(profiles)  # Cập nhật danh sách cho AutocompleteCombobox
             update_listbox()
+            update_profile_count()
         
         # Lưu đường dẫn Chrome vào danh sách vào config
         new_chrome_path = chrome_var.get()
@@ -541,6 +544,14 @@ def update_listbox():
     for profile in sorted(profiles):
         profiles_listbox.insert(tk.END, profile)
 
+def update_profile_count():
+    # Đọc lại danh sách profiles
+    profiles = read_profiles()
+    profile_count = len(profiles)
+
+    # Cập nhật lại nội dung của Label
+    profiles_label.config(text=f"Danh sách Profiles (Tổng: {profile_count}):")
+
 # Frame chứa các nút và Listbox
 profiles_frame = ttk.Frame(root, borderwidth=2, relief="groove")
 profiles_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
@@ -549,8 +560,8 @@ profiles_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 show_listbox_frame = ttk.Frame(profiles_frame, borderwidth=2, relief="groove")
 show_listbox_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-# Label cho danh sách profiles
-profiles_label = ttk.Label(show_listbox_frame, text="Danh sách Profiles:", font=("Helvetica", 12, "bold"))
+# Hiển thị số lượng profiles trong label
+profiles_label = ttk.Label(show_listbox_frame, text=f"Danh sách Profiles (Tổng: {profile_count}):", font=("Helvetica", 12, "bold"))
 profiles_label.pack(side=tk.TOP, padx=5, pady=5)
 
 # Listbox để hiển thị danh sách profiles
@@ -612,6 +623,8 @@ def delete_selected_profile():
         profiles_listbox.delete(selected_index)
         profiles.remove(selected_profile)
         save_profiles(profiles)
+        update_listbox()
+        update_profile_count()
     else:
         print("Vui lòng chọn một profile từ danh sách")
 
@@ -1304,6 +1317,7 @@ root.protocol("WM_DELETE_WINDOW", on_close)
 # Hàm để cập nhật danh sách profile khi khởi động
 update_profile_listbox()
 update_listbox()
+update_profile_count()
 
 # Chạy GUI
 root.mainloop()
