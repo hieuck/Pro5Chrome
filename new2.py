@@ -16,6 +16,7 @@ import pygetwindow as gw
 import pywinauto
 import psutil
 import webbrowser
+import screeninfo
 
 # -----------------------------------------------------------------
 # --------------------Copyright (c) 2024 hieuck--------------------
@@ -186,6 +187,13 @@ always_on_top_var = tk.BooleanVar()
 always_on_top_var.set(is_always_on_top)  # Giá trị mặc định, có thể bị ghi đè sau khi đọc từ config.json
 always_on_top_checkbox = ttk.Checkbutton(center_buttons_frame, text="Luôn hiển thị trên cùng", variable=always_on_top_var, command=toggle_always_on_top)
 always_on_top_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
+
+# Biến toàn cục để lưu trạng thái checkbox
+hide_taskbar_var = tk.BooleanVar()
+
+# Thêm checkbox để xác nhận ẩn thanh tác vụ
+hide_taskbar_checkbox = ttk.Checkbutton(center_buttons_frame, text="Ẩn thanh tác vụ", variable=hide_taskbar_var)
+hide_taskbar_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
@@ -623,13 +631,11 @@ profiles_listbox.bind("<Button-3>", on_right_click)
 # Start Hàm tương tác profile
 # ---------------------------
 
-import screeninfo  # Đảm bảo rằng bạn đã cài đặt thư viện này
-
 # Define function to arrange windows evenly on the screen
 def arrange_chrome_windows():
     main_window_title = root.title()  # Đảm bảo biến main_window_title đã được định nghĩa
 
-    # Giá trị mặc định cho margin
+    # Giá trị mặc định
     margin = 0  # Giá trị giãn cách mặc định là 0
 
     # Lấy kích thước màn hình
@@ -637,9 +643,14 @@ def arrange_chrome_windows():
     screen_width = screen.width
     screen_height = screen.height
 
-    # Loại bỏ chiều cao của thanh tác vụ (thường là 40px nhưng có thể khác tùy thuộc vào thiết lập của người dùng)
-    taskbar_height = 40  # Giả định chiều cao của thanh tác vụ
-    usable_height = screen_height - taskbar_height  # Chiều cao có thể sử dụng
+    # Kiểm tra trạng thái của checkbox
+    if hide_taskbar_var.get():
+        taskbar_height = 0  # Không trừ gì nếu ẩn thanh tác vụ
+    else:
+        taskbar_height = 40  # Trừ 40 pixels nếu thanh tác vụ hiện
+
+    # Tính chiều cao hiệu dụng của màn hình
+    effective_height = screen_height - taskbar_height
 
     # Tìm tất cả các cửa sổ Chrome hoặc CentBrowser
     chrome_windows = gw.getWindowsWithTitle("Google Chrome") + gw.getWindowsWithTitle("Cent Browser")
@@ -647,18 +658,29 @@ def arrange_chrome_windows():
     if chrome_windows:
         # Loại bỏ cửa sổ chính của chương trình khỏi danh sách
         chrome_windows = [win for win in chrome_windows if win.title != main_window_title]
+        
+        # Khôi phục tất cả các cửa sổ phóng to về chế độ bình thường
+        for win in chrome_windows:
+            if win.isMaximized:
+                win.restore()
 
         # Sắp xếp các cửa sổ theo thứ tự đảo ngược của thứ tự chúng được mở
         chrome_windows.sort(key=lambda x: x._hWnd, reverse=True)
 
-        # Tính số cột và hàng dựa trên kích thước màn hình
-        min_window_width = 505  # 505 là kích thước cửa sổ mặc định
-        num_columns = max(screen_width // (min_window_width + margin), 1)
+        # Lấy số cột từ ô nhập liệu
+        try:
+            num_columns = int(columns_entry.get())
+            if num_columns < 1:
+                num_columns = 1  # Đảm bảo số cột không nhỏ hơn 1
+        except ValueError:
+            num_columns = 2  # Nếu không có giá trị hợp lệ, mặc định là 2
+
+        # Tính số hàng dựa trên số cột
         num_rows = (len(chrome_windows) + num_columns - 1) // num_columns  # Tính số hàng cần thiết
 
         # Tính kích thước mới cho cửa sổ
         window_width = (screen_width - (num_columns - 1) * margin) // num_columns
-        window_height = (usable_height - (num_rows - 1) * margin) // num_rows  # Sử dụng chiều cao có thể sử dụng
+        window_height = (effective_height - (num_rows - 1) * margin) // num_rows # Sử dụng chiều cao có thể sử dụng
 
         # Giới hạn số lượng cửa sổ theo số hàng và cột
         max_windows = num_columns * num_rows
@@ -890,6 +912,10 @@ row1_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 row2_control_frame = ttk.Frame(control_frame)
 row2_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
+# Frame con để chứa các ô nhập liệu
+entry_frame = ttk.Frame(row2_control_frame)  # Đặt entry_frame bên trong khung mới
+entry_frame.pack(side=tk.RIGHT)
+
 # Tạo frame cho hàng thứ ba
 row3_control_frame = ttk.Frame(control_frame)
 row3_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
@@ -912,7 +938,17 @@ switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
 # Gắn nút "Sắp xếp" với hàm arrange_chrome_windows
 arrange_button = ttk.Button(row2_control_frame, text="Sắp xếp", command=arrange_chrome_windows)
-arrange_button.pack(side=tk.TOP, padx=5, pady=5, anchor='center')
+arrange_button.pack(side=tk.LEFT, padx=5, pady=5, anchor='center')
+
+# Nhập liệu cho "Số Cột"
+columns_frame = ttk.Frame(entry_frame)
+columns_frame.pack(side=tk.TOP, fill=tk.X, padx=5, pady=2)
+ttk.Label(columns_frame, text="Số Cột:").pack(side=tk.LEFT, padx=5)
+columns_entry = ttk.Entry(columns_frame, width=5)
+columns_entry.pack(side=tk.RIGHT, padx=5)
+
+# Đặt giá trị mặc định cho ô nhập liệu
+columns_entry.insert(0, "8")  # Giá trị mặc định là 8
 
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
 minimize_button = ttk.Button(row3_control_frame, text="Thu nhỏ", command=minimize_selected_chrome)
