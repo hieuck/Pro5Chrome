@@ -253,6 +253,7 @@ def save_chrome_path(chrome_path):
         print(f"Không có quyền truy cập để ghi vào {CONFIG_FILE}: {e}")
     except Exception as e:
         print(f"Lỗi khi lưu đường dẫn Chrome: {e}")
+
 # Hàm để mở thư mục User Data
 def open_user_data_folder():
     use_chrome_path = chrome_var.get() or read_chrome_path()
@@ -365,7 +366,7 @@ def read_profiles():
 # Đọc danh sách profiles từ tệp
 profiles = read_profiles()
 profile_count = len(profiles)
-print(f"Số lượng profiles: {profile_count}")
+print(f"Số lượng profiles từ tệp: {profile_count}")
 
 # Hàm để lưu danh sách profiles vào tệp
 def save_profiles(profiles):
