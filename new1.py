@@ -873,13 +873,13 @@ row1_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 row2_control_frame = ttk.Frame(control_frame)
 row2_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
+# Frame con bên phải nút sắp xếp để chứa các ô nhập liệu
+entry_frame = ttk.Frame(row2_control_frame)
+entry_frame.pack(side=tk.RIGHT, padx=5, anchor='n')  # Đặt frame này ngay bên phải nút "Sắp xếp"
+
 # Tạo frame cho hàng thứ ba
 row3_control_frame = ttk.Frame(control_frame)
 row3_control_frame.pack(side=tk.TOP, pady=5, anchor='w')
-
-# Tạo frame cho các ô nhập liệu (kích thước và giãn cách)
-size_frame = ttk.Frame(control_frame)
-size_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
 # Nút Đăng Nhập Google cho Listbox
 login_button_listbox = ttk.Button(row1_control_frame, text="Đăng Nhập Google (Danh sách)", command=login_google_from_listbox)
@@ -901,19 +901,25 @@ switch_tab_button.pack(side=tk.LEFT, padx=5, anchor='w')
 arrange_button = ttk.Button(row2_control_frame, text="Sắp xếp", command=arrange_chrome_windows)
 arrange_button.pack(side=tk.LEFT, padx=5, anchor='w')
 
-# Nhập chiều rộng
-ttk.Label(size_frame, text="Rộng:").pack(side=tk.LEFT, padx=5)
-width_entry = ttk.Entry(size_frame, width=5)
+# Nhập liệu cho "Rộng"
+width_frame = ttk.Frame(entry_frame)
+width_frame.pack(side=tk.TOP, fill=tk.X, pady=2)
+ttk.Label(width_frame, text="C.Rộng:").pack(side=tk.LEFT, padx=5)
+width_entry = ttk.Entry(width_frame, width=5)
 width_entry.pack(side=tk.LEFT, padx=5)
 
-# Nhập chiều cao
-ttk.Label(size_frame, text="Cao:").pack(side=tk.LEFT, padx=5)
-height_entry = ttk.Entry(size_frame, width=5)
+# Nhập liệu cho "Cao"
+height_frame = ttk.Frame(entry_frame)
+height_frame.pack(side=tk.TOP, fill=tk.X, pady=2)
+ttk.Label(height_frame, text="C.Cao:  ").pack(side=tk.LEFT, padx=5)
+height_entry = ttk.Entry(height_frame, width=5)
 height_entry.pack(side=tk.LEFT, padx=5)
 
-# Nhập khoảng giãn cách
-ttk.Label(size_frame, text="Giãn cách:").pack(side=tk.LEFT, padx=5)
-margin_entry = ttk.Entry(size_frame, width=5)
+# Nhập liệu cho "Giãn cách"
+margin_frame = ttk.Frame(entry_frame)
+margin_frame.pack(side=tk.TOP, fill=tk.X, pady=2)
+ttk.Label(margin_frame, text="G.Cách:").pack(side=tk.LEFT, padx=5)
+margin_entry = ttk.Entry(margin_frame, width=5)
 margin_entry.pack(side=tk.LEFT, padx=5)
 
 # Gắn nút "Thu nhỏ" với hàm minimize_selected_chrome
@@ -927,7 +933,6 @@ restore_button.pack(side=tk.LEFT, padx=5, anchor='w')
 # Gắn nút "Đóng" với hàm close_chrome_window
 close_button = ttk.Button(row3_control_frame, text="Đóng", command=close_chrome_window)
 close_button.pack(side=tk.LEFT, padx=5, anchor='w')
-
 
 # Frame for displaying Profile đang mở
 open_profile_frame = ttk.Frame(profiles_frame, borderwidth=2, relief="groove")
