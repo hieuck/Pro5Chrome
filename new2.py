@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, Menu
+from tkinter import ttk, Menu, messagebox
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -17,6 +17,7 @@ import pywinauto
 import psutil
 import webbrowser
 import screeninfo
+import shutil
 
 # -----------------------------------------------------------------
 # --------------------Copyright (c) 2024 hieuck--------------------
@@ -620,11 +621,49 @@ def delete_selected_profile():
     selected_index = profiles_listbox.curselection()
     if selected_index:
         selected_profile = profiles_listbox.get(selected_index)
-        profiles_listbox.delete(selected_index)
-        profiles.remove(selected_profile)
-        save_profiles(profiles)
-        update_listbox()
-        update_profile_count()
+
+        # Hỏi xác nhận người dùng có muốn xóa không
+        confirm = messagebox.askyesno("Xác nhận xóa", f"Bạn có chắc chắn muốn xóa thư mục User Data 'Profile {selected_profile}' không?")
+        if confirm:
+            # Xóa profile trong danh sách
+            profiles_listbox.delete(selected_index)
+            profiles.remove(selected_profile)
+            save_profiles(profiles)
+
+            # Xác định đường dẫn User Data để xóa
+            use_chrome_path = chrome_var.get() or read_chrome_path()
+            if 'google' in use_chrome_path.lower():
+                user_data_path = os.path.join(os.getenv('LOCALAPPDATA'), 'Google', 'Chrome', 'User Data')
+            elif 'centbrowser' in use_chrome_path.lower():
+                chrome_folder_path = os.path.dirname(use_chrome_path)
+                user_data_path = os.path.join(chrome_folder_path, 'User Data')
+            else:
+                print("Không thể xác định đường dẫn User Data cho đường dẫn này.")
+                return
+
+            # Định nghĩa tên thư mục User Data cho profile đang chọn
+            selected_user_data_folder_name = f"Profile {selected_profile}"  # Ví dụ: Profile a
+            selected_user_data_folder_path = os.path.join(user_data_path, selected_user_data_folder_name)
+
+            # Kiểm tra xem thư mục có tồn tại không trước khi xóa
+            if os.path.exists(selected_user_data_folder_path):
+                try:
+                    # Xóa thư mục User Data liên quan
+                    shutil.rmtree(selected_user_data_folder_path)
+                    print(f"Đã xóa thư mục User Data: {selected_user_data_folder_path}")
+                    update_listbox()
+                    update_profile_count()
+                except PermissionError as e:
+                    print(f"Không thể xóa thư mục: {e}. Có thể một tệp đang được sử dụng.")
+                    # Tùy chọn: chờ một chút và thử lại
+                    time.sleep(1)
+                    try:
+                        shutil.rmtree(selected_user_data_folder_path)  # Thử lại lần nữa
+                        print(f"Đã xóa thư mục User Data: {selected_user_data_folder_path}")
+                    except Exception as e:
+                        print(f"Vẫn không thể xóa: {e}")
+            else:
+                print(f"Thư mục User Data không tồn tại: {selected_user_data_folder_path}")
     else:
         print("Vui lòng chọn một profile từ danh sách")
 
