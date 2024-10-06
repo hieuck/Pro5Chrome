@@ -201,28 +201,18 @@ def is_taskbar_hidden():
     # Nếu kích thước vùng làm việc (work area) bằng với kích thước màn hình -> taskbar ẩn
     return (rect.bottom == screen_height)
 
-# Biến toàn cục để lưu trạng thái checkbox
-hide_taskbar_var = tk.BooleanVar()
+# Biến để lưu trạng thái checkbox
+hide_taskbar_var = tk.BooleanVar(value=is_taskbar_hidden())  # Gán trực tiếp giá trị kiểm tra taskbar
 
-# Cập nhật trạng thái của checkbox dựa trên việc taskbar có ẩn hay không
-hide_taskbar_var.set(is_taskbar_hidden())
+# Cập nhật nhãn checkbox
+checkbox_label = "Đã ẩn thanh tác vụ" if hide_taskbar_var.get() else "Không ẩn thanh tác vụ"
 
-# Kiểm tra trạng thái taskbar
-taskbar_hidden = is_taskbar_hidden()
-
-# Cập nhật nhãn của checkbox dựa trên trạng thái taskbar
-checkbox_label = "Đã ẩn thanh tác vụ" if taskbar_hidden else "Không ẩn thanh tác vụ"
-hide_taskbar_var.set(taskbar_hidden)
-
-# Thêm checkbox để xác nhận ẩn thanh tác vụ
+# Thêm checkbox để hiển thị trạng thái ẩn taskbar
 hide_taskbar_checkbox = ttk.Checkbutton(center_buttons_frame, text=checkbox_label, variable=hide_taskbar_var)
 hide_taskbar_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
 # Ví dụ sử dụng:
-if is_taskbar_hidden():
-    print("Taskbar đang bị ẩn.")
-else:
-    print("Taskbar đang hiển thị.")
+print(f"Taskbar {'đang bị ẩn' if hide_taskbar_var.get() else 'đang hiển thị'}.")
 
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
