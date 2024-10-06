@@ -18,6 +18,7 @@ import psutil
 import webbrowser
 import screeninfo
 import shutil
+import ctypes
 
 # -----------------------------------------------------------------
 # --------------------Copyright (c) 2024 hieuck--------------------
@@ -189,12 +190,39 @@ always_on_top_var.set(is_always_on_top)  # Giá trị mặc định, có thể b
 always_on_top_checkbox = ttk.Checkbutton(center_buttons_frame, text="Luôn hiển thị trên cùng", variable=always_on_top_var, command=toggle_always_on_top)
 always_on_top_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
+# Hàm để kiểm tra taskbar có ẩn hay không
+def is_taskbar_hidden():
+    SPI_GETWORKAREA = 0x0030
+    rect = ctypes.wintypes.RECT()
+    ctypes.windll.user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
+
+    screen_height = ctypes.windll.user32.GetSystemMetrics(1)
+
+    # Nếu kích thước vùng làm việc (work area) bằng với kích thước màn hình -> taskbar ẩn
+    return (rect.bottom == screen_height)
+
 # Biến toàn cục để lưu trạng thái checkbox
 hide_taskbar_var = tk.BooleanVar()
 
+# Cập nhật trạng thái của checkbox dựa trên việc taskbar có ẩn hay không
+hide_taskbar_var.set(is_taskbar_hidden())
+
+# Kiểm tra trạng thái taskbar
+taskbar_hidden = is_taskbar_hidden()
+
+# Cập nhật nhãn của checkbox dựa trên trạng thái taskbar
+checkbox_label = "Đã ẩn thanh tác vụ" if taskbar_hidden else "Không ẩn thanh tác vụ"
+hide_taskbar_var.set(taskbar_hidden)
+
 # Thêm checkbox để xác nhận ẩn thanh tác vụ
-hide_taskbar_checkbox = ttk.Checkbutton(center_buttons_frame, text="Ẩn thanh tác vụ", variable=hide_taskbar_var)
+hide_taskbar_checkbox = ttk.Checkbutton(center_buttons_frame, text=checkbox_label, variable=hide_taskbar_var)
 hide_taskbar_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
+
+# Ví dụ sử dụng:
+if is_taskbar_hidden():
+    print("Taskbar đang bị ẩn.")
+else:
+    print("Taskbar đang hiển thị.")
 
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
