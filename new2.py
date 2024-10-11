@@ -19,6 +19,7 @@ import webbrowser
 import screeninfo
 import shutil
 import ctypes
+import pyperclip  # Thư viện để thao tác với clipboard
 
 # -----------------------------------------------------------------
 # --------------------Copyright (c) 2024 hieuck--------------------
@@ -612,8 +613,6 @@ profiles_listbox.bind('<Double-Button-1>', handle_double_click)
 # -----------------
 # Start Right Click
 # -----------------
-
-import pyperclip  # Thư viện để thao tác với clipboard
 
 # Hàm để xử lý sự kiện chuột phải vào Listbox
 def on_right_click(event):
