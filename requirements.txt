@@ -1,0 +1,7 @@
+selenium
+webdriver-manager
+pygetwindow
+pywinauto
+psutil
+screeninfo
+requests
