@@ -277,7 +277,9 @@ def save_chrome_path(chrome_path):
 def open_user_data_folder():
     use_chrome_path = chrome_var.get() or read_chrome_path()
     
-    print(f"Đường dẫn Chrome đã sử dụng: {use_chrome_path}")
+    print(f"Đường dẫn Chrome đã sử dụng: {use_chrome_path.replace('\\', '/')}")
+    
+    user_data_path = None
     
     if 'google' in use_chrome_path.lower():
         user_data_path = os.path.join(os.getenv('LOCALAPPDATA'), 'Google', 'Chrome', 'User Data')
@@ -285,18 +287,25 @@ def open_user_data_folder():
         if 'chrome' in use_chrome_path.lower():
             chrome_folder_path = os.path.dirname(use_chrome_path)
             user_data_path = os.path.join(chrome_folder_path, 'User Data')  # Đường dẫn đến thư mục User Data của Cent Browser
-        
             print(f"Cent Browser User Data path: {user_data_path.replace('\\', '/')}")
-        
             if not os.path.exists(user_data_path):
-                print(f"Thư mục User Data không tồn tại: {user_data_path}")
+                print(f"Thư mục User Data Cent Browser không tồn tại: {user_data_path}")
                 return
+    elif 'chromedriver' in use_chrome_path.lower() or 'chrome-win64' in use_chrome_path.lower():  # Check for Chrome for Testing
+        if os.path.exists(os.path.join(os.path.dirname(use_chrome_path), 'chromedriver.exe')):  # Verify chromedriver exists
+            user_data_path = os.path.join(os.getenv('LOCALAPPDATA'), 'Google', 'Chrome for Testing', 'User Data')  # Đường dẫn đến Chrome for Testing's User Data
+            print(f"Chrome for Testing User Data path: {user_data_path}")
+        else:
+            print(f"Không tìm thấy tệp chromedriver.exe tại: {os.path.dirname(use_chrome_path)}")
     else:
         print("Không thể mở thư mục User Data cho đường dẫn này.")
         return
     
-    user_data_path = os.path.abspath(user_data_path)
-    subprocess.Popen(['explorer', user_data_path])
+    if user_data_path:
+        user_data_path = os.path.abspath(user_data_path)
+        subprocess.Popen(['explorer', user_data_path])
+    else:
+        print(f"Không thể mở thư mục User Data. Lỗi: Đường dẫn không xác định hoặc không đúng - {use_chrome_path}")
 
 # Hàm để xóa đường dẫn Chrome đã chọn
 def delete_selected_chrome_path():
