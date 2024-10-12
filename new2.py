@@ -304,8 +304,6 @@ def open_user_data_folder():
     if user_data_path:
         user_data_path = os.path.abspath(user_data_path)
         subprocess.Popen(['explorer', user_data_path])
-    else:
-        print(f"Không thể mở thư mục User Data. Lỗi: Đường dẫn không xác định hoặc không đúng - {use_chrome_path}")
 
 # Hàm để xóa đường dẫn Chrome đã chọn
 def delete_selected_chrome_path():
