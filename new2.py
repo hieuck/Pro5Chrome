@@ -196,42 +196,24 @@ def is_taskbar_hidden():
     SPI_GETWORKAREA = 0x0030
     rect = ctypes.wintypes.RECT()
     ctypes.windll.user32.SystemParametersInfoW(SPI_GETWORKAREA, 0, ctypes.byref(rect), 0)
-
     screen_height = ctypes.windll.user32.GetSystemMetrics(1)
-
-    # Nếu kích thước vùng làm việc (work area) bằng với kích thước màn hình -> taskbar ẩn
-    return (rect.bottom == screen_height)
+    return rect.bottom == screen_height  # Taskbar ẩn nếu vùng làm việc bằng kích thước màn hình
 
 # Hàm để cập nhật trạng thái của checkbox
 def update_taskbar_status():
     current_status = is_taskbar_hidden()
-    
-    # Cập nhật giá trị của biến checkbox nếu trạng thái thay đổi
     if hide_taskbar_var.get() != current_status:
         hide_taskbar_var.set(current_status)
-        
-        # Cập nhật lại nhãn của checkbox
-        checkbox_label = "Đã ẩn thanh tác vụ" if hide_taskbar_var.get() else "Không ẩn thanh tác vụ"
-        hide_taskbar_checkbox.config(text=checkbox_label)
-    
-    # Kiểm tra lại sau 1000ms (1 giây)
-    root.after(1000, update_taskbar_status)
+        hide_taskbar_checkbox.config(text="Đã ẩn thanh tác vụ" if current_status else "Không ẩn thanh tác vụ")
+    root.after(1000, update_taskbar_status)  # Lặp lại kiểm tra sau 1 giây
 
-# Biến để lưu trạng thái checkbox
-hide_taskbar_var = tk.BooleanVar(value=is_taskbar_hidden())  # Gán trực tiếp giá trị kiểm tra taskbar
-
-# Cập nhật nhãn checkbox
-checkbox_label = "Đã ẩn thanh tác vụ" if hide_taskbar_var.get() else "Không ẩn thanh tác vụ"
-
-# Thêm checkbox để hiển thị trạng thái ẩn taskbar
-hide_taskbar_checkbox = ttk.Checkbutton(center_buttons_frame, text=checkbox_label, variable=hide_taskbar_var)
+# Khởi tạo checkbox và trạng thái ban đầu
+hide_taskbar_var = tk.BooleanVar(value=is_taskbar_hidden())
+hide_taskbar_checkbox = ttk.Checkbutton(center_buttons_frame, text="Đã ẩn thanh tác vụ" if hide_taskbar_var.get() else "Không ẩn thanh tác vụ", variable=hide_taskbar_var)
 hide_taskbar_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
-# Gọi hàm cập nhật trạng thái taskbar định kỳ
+# Bắt đầu cập nhật trạng thái taskbar định kỳ
 update_taskbar_status()
-
-# Ví dụ sử dụng:
-print(f"Taskbar {'đang bị ẩn' if hide_taskbar_var.get() else 'đang hiển thị'}.")
 
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
