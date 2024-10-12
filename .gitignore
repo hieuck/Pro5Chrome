@@ -162,3 +162,4 @@ cython_debug/
 /chrome-win64
 chrome-win64.zip
 chromedriver-win64.zip
+/ChromeAuto/chrome-win64
