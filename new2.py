@@ -202,6 +202,21 @@ def is_taskbar_hidden():
     # Nếu kích thước vùng làm việc (work area) bằng với kích thước màn hình -> taskbar ẩn
     return (rect.bottom == screen_height)
 
+# Hàm để cập nhật trạng thái của checkbox
+def update_taskbar_status():
+    current_status = is_taskbar_hidden()
+    
+    # Cập nhật giá trị của biến checkbox nếu trạng thái thay đổi
+    if hide_taskbar_var.get() != current_status:
+        hide_taskbar_var.set(current_status)
+        
+        # Cập nhật lại nhãn của checkbox
+        checkbox_label = "Đã ẩn thanh tác vụ" if hide_taskbar_var.get() else "Không ẩn thanh tác vụ"
+        hide_taskbar_checkbox.config(text=checkbox_label)
+    
+    # Kiểm tra lại sau 1000ms (1 giây)
+    root.after(1000, update_taskbar_status)
+
 # Biến để lưu trạng thái checkbox
 hide_taskbar_var = tk.BooleanVar(value=is_taskbar_hidden())  # Gán trực tiếp giá trị kiểm tra taskbar
 
@@ -211,6 +226,9 @@ checkbox_label = "Đã ẩn thanh tác vụ" if hide_taskbar_var.get() else "Kh�
 # Thêm checkbox để hiển thị trạng thái ẩn taskbar
 hide_taskbar_checkbox = ttk.Checkbutton(center_buttons_frame, text=checkbox_label, variable=hide_taskbar_var)
 hide_taskbar_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
+
+# Gọi hàm cập nhật trạng thái taskbar định kỳ
+update_taskbar_status()
 
 # Ví dụ sử dụng:
 print(f"Taskbar {'đang bị ẩn' if hide_taskbar_var.get() else 'đang hiển thị'}.")
