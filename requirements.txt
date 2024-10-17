@@ -5,4 +5,7 @@ pywinauto
 psutil
 screeninfo
 pyperclip
+pyautogui
+pynput
+pillow
 requests

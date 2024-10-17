@@ -1206,6 +1206,39 @@ def delete_selected_urls():
     else:
         print("Vui lòng chọn ít nhất một URL để xóa")
 
+# Hàm để kiểm tra các profile Chrome đang chạy
+def get_running_profiles():
+    running_profiles = []
+    for process in psutil.process_iter(['name', 'cmdline']):
+        if process.info['name'] == 'chrome.exe' and '--profile-directory=' in ' '.join(process.info['cmdline']):
+            for cmd in process.info['cmdline']:
+                if '--profile-directory=' in cmd:
+                    profile = cmd.split('=')[-1]
+                    running_profiles.append(profile)
+    return list(set(running_profiles))  # Loại bỏ trùng lặp nếu có
+
+# Hàm mở URL với các profiles đang chạy
+def open_url_with_running_profiles():
+    use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
+    if 'chrome.exe' not in use_chrome_path.lower():
+        use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
+
+    running_profiles = get_running_profiles()
+    if not running_profiles:
+        print("Không có profile nào đang chạy.")
+        return
+    else:
+        print(f"Profiles đang chạy: {running_profiles}")
+
+    selected_url_index = urls_listbox.curselection()
+    if selected_url_index:
+        selected_url = urls_listbox.get(selected_url_index[0])
+        for profile in running_profiles:
+            profile_directory = f"--profile-directory={profile}"
+            subprocess.Popen([use_chrome_path, profile_directory, selected_url])
+    else:
+        print("Vui lòng chọn một URL từ danh sách")
+
 # Hàm để mở URL với toàn bộ Chrome profiles
 def open_url_all_profiles():
     use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
@@ -1244,6 +1277,10 @@ row1_url_frame.pack(side=tk.TOP, pady=5, anchor='w')
 row2_url_frame = ttk.Frame(url_control_frame )
 row2_url_frame.pack(side=tk.TOP, pady=5, anchor='w')
 
+# Tạo frame cho hàng thứ ba
+row3_url_frame = ttk.Frame(url_control_frame )
+row3_url_frame.pack(side=tk.TOP, pady=5, anchor='w')
+
 # Nút để mở URL từ Listbox
 open_url_button = ttk.Button(row1_url_frame, text="Mở URL được chọn", command=open_url_from_listbox)
 open_url_button.pack(side=tk.LEFT, padx=5)
@@ -1252,17 +1289,92 @@ open_url_button.pack(side=tk.LEFT, padx=5)
 delete_url_button = ttk.Button(row1_url_frame, text="Xóa URL được chọn", command=delete_selected_urls)
 delete_url_button.pack(side=tk.LEFT, padx=5)
 
+# Nút để mở URL với các profiles đang chạy
+open_running_profiles_button = ttk.Button(row2_url_frame, text="Mở URL với Profiles Đang Chạy", command=open_url_with_running_profiles)
+open_running_profiles_button.pack(side=tk.LEFT, padx=5)
+
 # Nút để mở URL với toàn bộ profile
-open_all_profiles_button = ttk.Button(row2_url_frame, text="Mở URL với Toàn Bộ Profiles", command=open_url_all_profiles)
+open_all_profiles_button = ttk.Button(row3_url_frame, text="Mở URL với Toàn Bộ Profiles", command=open_url_all_profiles)
 open_all_profiles_button.pack(side=tk.LEFT, padx=5)
 
 # Nút để xóa danh sách URLs
-delete_urls_button = ttk.Button(row2_url_frame, text="Xóa danh sách URLs", command=clear_urls_list)
+delete_urls_button = ttk.Button(row3_url_frame, text="Xóa danh sách URLs", command=clear_urls_list)
 delete_urls_button.pack(side=tk.LEFT, padx=5)
 
 # -------
 # End URL
 # -------
+
+# ------------
+# Đồng bộ chuột
+# ------------
+import pyautogui
+import threading
+
+# Các biến toàn cục để điều khiển trạng thái đồng bộ
+is_syncing = False
+pause_sync = False
+
+# Hàm đồng bộ chuột giữa các cửa sổ
+def sync_mouse_to_windows():
+    global is_syncing, pause_sync
+    while is_syncing:
+        if not pause_sync:
+            x, y = pyautogui.position()  # Lấy vị trí chuột
+            pyautogui.moveTo(x, y)  # Di chuyển chuột đến vị trí tương tự trên các cửa sổ khác
+        time.sleep(0.01)
+
+# Hàm bắt đầu đồng bộ
+def start_sync():
+    global is_syncing
+    if not is_syncing:  # Đảm bảo không khởi động nhiều lần
+        is_syncing = True
+        sync_thread = threading.Thread(target=sync_mouse_to_windows)
+        sync_thread.start()
+
+# Hàm tạm dừng đồng bộ
+def pause_syncing():
+    global pause_sync
+    pause_sync = True
+
+# Hàm tiếp tục đồng bộ sau khi tạm dừng
+def resume_syncing():
+    global pause_sync
+    pause_sync = False
+
+# Hàm dừng đồng bộ
+def stop_sync():
+    global is_syncing
+    is_syncing = False
+
+# Giao diện Tkinter cho đồng bộ
+def create_sync_control_panel():
+    sync_window = tk.Toplevel(root)  # Tạo một cửa sổ con mới
+    sync_window.title("Control Panel Đồng bộ")
+
+    # Nút để bắt đầu đồng bộ
+    start_button = tk.Button(sync_window, text="Bắt đầu đồng bộ", command=start_sync, width=25, height=2)
+    start_button.pack(pady=10)
+
+    # Nút để tạm dừng đồng bộ
+    pause_button = tk.Button(sync_window, text="Tạm dừng", command=pause_syncing, width=25, height=2)
+    pause_button.pack(pady=10)
+
+    # Nút để tiếp tục đồng bộ
+    resume_button = tk.Button(sync_window, text="Tiếp tục đồng bộ", command=resume_syncing, width=25, height=2)
+    resume_button.pack(pady=10)
+
+    # Nút để dừng đồng bộ
+    stop_button = tk.Button(sync_window, text="Dừng đồng bộ", command=stop_sync, width=25, height=2)
+    stop_button.pack(pady=10)
+
+# Thêm nút vào giao diện chính để mở Control Panel đồng bộ
+sync_button = tk.Button(root, text="Đồng bộ chuột", command=create_sync_control_panel, width=25, height=2)
+sync_button.pack(pady=10)
+
+# ------------
+# Đồng bộ chuột
+# ------------
 
 # ----------------------------------
 # -------------Selenium-------------
