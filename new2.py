@@ -92,7 +92,10 @@ DEFAULT_CONFIG = {
 # Hàm chuẩn hóa đường dẫn
 def normalize_paths(config):
     if 'chrome_paths' in config:
-        config['chrome_paths'] = [path.replace("\\", "/") for path in config['chrome_paths']]
+        config['chrome_paths'] = [
+            path.replace("\\", "/") + ("/chrome.exe" if not path.endswith("/chrome.exe") else "")
+            for path in config['chrome_paths']
+        ]
     return config
 
 # Hàm để đọc cấu hình từ tệp config.json
