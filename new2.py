@@ -427,14 +427,32 @@ def open_chrome_and_add_profile():
     else:
         print("Vui lòng chọn hoặc nhập một profile")
 
+def get_chrome_arguments(profile):
+    return [
+        # f"--profile-directory=Profile {profile}",
+        f"--user-data-dir=Profile {profile}",
+        "--lang=vi",
+        "--password-store=basic",
+        "--gpm-disable-machine-id",
+        # "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+        "--no-default-browser-check",
+        # "--uniform2f-noise=-1",  # Đưa uniform2f_noise vào danh sách
+        # f"--load-extension={{}}",  # Đặt dấu ngoặc nhọn để thay thế sau này
+        # "--max-vertex-uniform=4232",
+        # "--max-fragment-uniform=992",
+        # "--webgl-renderer=\"ANGLE (Intel, Intel(R) UHD Graphics 630 (0x00009BC5) Direct3D11 vs_5_0 ps_5_0, D3D11)\"",
+        "--no-first-run",
+        "--hide-crash-restore-bubble"
+    ]
+
 # Hàm để mở Chrome với profile được chọn
 @update_listbox_decorator
 def open_chrome(profile):
     use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
     if 'chrome.exe' not in use_chrome_path.lower():
         use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
-    profile_directory = f"--profile-directory=Profile {profile}"
-    subprocess.Popen([use_chrome_path, profile_directory])
+    chrome_arguments = get_chrome_arguments(profile)
+    subprocess.Popen([use_chrome_path] + chrome_arguments)
 
 # Hàm để mở trang đăng nhập Google trong Chrome
 @update_listbox_decorator
@@ -443,8 +461,8 @@ def login_google(profile):
     if 'chrome.exe' not in use_chrome_path.lower():
         use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
     login_url = 'https://accounts.google.com/'
-    profile_directory = f"--profile-directory=Profile {profile}"
-    subprocess.Popen([use_chrome_path, profile_directory, login_url])
+    chrome_arguments = get_chrome_arguments(profile)
+    subprocess.Popen([use_chrome_path] + chrome_arguments + [login_url])
 
 # Hàm để đăng nhập Google với profile từ Combobox
 @update_listbox_decorator
@@ -829,8 +847,8 @@ def open_all_chrome_profiles():
         return
     
     for profile in profiles:
-        profile_directory = f"--profile-directory=Profile {profile}"
-        subprocess.Popen([use_chrome_path, profile_directory])
+        chrome_arguments = get_chrome_arguments(profile)
+        subprocess.Popen([use_chrome_path] + chrome_arguments)
 
 # Hàm tìm cửa sổ Chrome theo profile
 def find_chrome_window(profile_name):
@@ -1183,8 +1201,8 @@ def open_url_from_listbox(event=None):
         if 'chrome.exe' not in use_chrome_path.lower():
             use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
         if selected_profile:
-            profile_directory = f"--profile-directory=Profile {selected_profile}"
-            subprocess.Popen([use_chrome_path, profile_directory, selected_url])
+            chrome_arguments = get_chrome_arguments(profile)
+            subprocess.Popen([use_chrome_path] + chrome_arguments + [selected_url])
         else:
             open_url(selected_url)
     else:
@@ -1195,7 +1213,9 @@ def open_url(url):
     use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path  # Lấy đường dẫn Chrome từ Combobox, nếu không có thì dùng đường dẫn mặc định
     if 'chrome.exe' not in use_chrome_path.lower():
         use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
-    subprocess.Popen([use_chrome_path, url])
+
+    chrome_arguments = get_chrome_arguments(profile)
+    subprocess.Popen([use_chrome_path] + chrome_arguments + [url])    
 
 # Hàm để xóa các URLs đã chọn từ Listbox
 def delete_selected_urls():
@@ -1237,8 +1257,8 @@ def open_url_with_running_profiles():
     if selected_url_index:
         selected_url = urls_listbox.get(selected_url_index[0])
         for profile in running_profiles:
-            profile_directory = f"--profile-directory={profile}"
-            subprocess.Popen([use_chrome_path, profile_directory, selected_url])
+            chrome_arguments = get_chrome_arguments(profile)
+            subprocess.Popen([use_chrome_path] + chrome_arguments + [selected_url])
     else:
         print("Vui lòng chọn một URL từ danh sách")
 
@@ -1255,8 +1275,8 @@ def open_url_all_profiles():
     if selected_url_index:
         selected_url = urls_listbox.get(selected_url_index[0])
         for profile in profiles:
-            profile_directory = f"--profile-directory=Profile {profile}"
-            subprocess.Popen([use_chrome_path, profile_directory, selected_url])
+            chrome_arguments = get_chrome_arguments(profile)
+            subprocess.Popen([use_chrome_path] + chrome_arguments + [selected_url])
     else:
         print("Vui lòng chọn một URL từ danh sách")
 
