@@ -92,37 +92,39 @@ def normalize_paths(config):
         config['chrome_paths'] = [path.replace("\\", "/") for path in config['chrome_paths']]
     return config
 
+# Hàm để đọc JSON từ tệp
+def read_json(file_path, default_value=None):
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                return json.load(file)
+        else:
+            return default_value
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON from {file_path}: {e}")
+        return default_value
+    except Exception as e:
+        print(f"Error reading {file_path}: {e}")
+        return default_value
+
+# Hàm để ghi JSON vào tệp
+def write_json(file_path, data):
+    try:
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=4)
+    except Exception as e:
+        print(f"Error writing to {file_path}: {e}")
+
 # Hàm để đọc cấu hình từ tệp config.json
 def read_config():
     global is_always_on_top, chrome_paths, default_chrome_path
-    try:
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, 'r') as file:
-                config = json.load(file)
-                config = normalize_paths(config)
-                is_always_on_top = config.get('always_on_top', False)
-                chrome_paths = config.get('chrome_paths', [default_chrome_path])
-                # default_chrome_path = chrome_paths[0] if chrome_paths else default_chrome_path
-                chrome_path = config.get('chrome_path', default_chrome_path)
-                # In thông báo về các giá trị cấu hình đã đọc
-                print(f"is_always_on_top: {is_always_on_top}")
-                print(f"use_chrome_path: {chrome_path}")
-        else:
-            print(f"Tệp {CONFIG_FILE} không tồn tại. Sẽ sử dụng cấu hình mặc định.")
-            is_always_on_top = False
-            chrome_paths = [default_chrome_path]
-    except FileNotFoundError:
-        print(f"Tệp {CONFIG_FILE} không tồn tại. Sẽ sử dụng cấu hình mặc định.")
-        is_always_on_top = False
-        chrome_paths = [default_chrome_path]
-    except json.JSONDecodeError as e:
-        print(f"Lỗi giải mã JSON trong tệp {CONFIG_FILE}: {e}. Sẽ sử dụng cấu hình mặc định.")
-        is_always_on_top = False
-        chrome_paths = [default_chrome_path]
-    except Exception as e:
-        print(f"Lỗi khi đọc tệp {CONFIG_FILE}: {e}. Sẽ sử dụng cấu hình mặc định.")
-        is_always_on_top = False
-        chrome_paths = [default_chrome_path]
+    config = read_json(CONFIG_FILE, DEFAULT_CONFIG)
+    config = normalize_paths(config)
+    is_always_on_top = config.get('always_on_top', False)
+    chrome_paths = config.get('chrome_paths', [default_chrome_path])
+    chrome_path = config.get('chrome_path', default_chrome_path)
+    print(f"is_always_on_top: {is_always_on_top}")
+    print(f"use_chrome_path: {chrome_path}")
 
 # Hàm để lưu cấu hình
 def save_config():
@@ -131,12 +133,8 @@ def save_config():
         'always_on_top': is_always_on_top,
         'chrome_paths': chrome_paths
     }
-    try:
-        config = normalize_paths(config)
-        with open(CONFIG_FILE, 'w') as file:
-            json.dump(config, file, indent=4)
-    except Exception as e:
-        print(f"Lỗi khi lưu cấu hình: {e}")
+    config = normalize_paths(config)
+    write_json(CONFIG_FILE, config)
 
 # Hàm xử lý lỗi JSON
 def handle_json_error():
@@ -150,9 +148,8 @@ def handle_json_error():
             'always_on_top': is_always_on_top,
             'chrome_paths': [default_chrome_path]           
         }
-        with open(CONFIG_FILE, 'w') as file:
-            json.dump(default_config, file, indent=4)
-            print(f"Đã tạo lại tệp {CONFIG_FILE} với dữ liệu mặc định.")
+        write_json(CONFIG_FILE, default_config)
+        print(f"Đã tạo lại tệp {CONFIG_FILE} với dữ liệu mặc định.")
         
         # Trả về cấu hình mặc định
         return default_config
@@ -197,61 +194,25 @@ hide_taskbar_checkbox.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=10)
 
 # Hàm để đọc đường dẫn Chrome từ config
 def read_chrome_path():
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, 'r') as file:
-                config = json.load(file)
-                return config.get('chrome_path', '')  # Trả về đường dẫn Chrome từ config nếu có
-        except json.JSONDecodeError as e:
-            print(f"Lỗi khi đọc file cấu hình: {e}")
-            return ''
-        except Exception as e:
-            print(f"Lỗi không xác định khi đọc file cấu hình: {e}")
-            return ''
-    else:
-        return ''
+    config = read_json(CONFIG_FILE, {})
+    return config.get('chrome_path', '')
 
 # Đọc danh sách đường dẫn Chrome từ config
 def read_chrome_paths():
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, 'r') as file:
-                config = json.load(file)
-                return config.get('chrome_paths', [default_chrome_path])
-        except json.JSONDecodeError as e:
-            print(f"Lỗi khi đọc file cấu hình: {e}")
-            return [default_chrome_path]
-        except Exception as e:
-            print(f"Lỗi không xác định khi đọc file cấu hình: {e}")
-            return [default_chrome_path]
-    else:
-        return [default_chrome_path]
+    config = read_json(CONFIG_FILE, {})
+    return config.get('chrome_paths', [default_chrome_path])
 
 chrome_paths = read_chrome_paths()
 
 # Hàm để lưu đường dẫn Chrome vào config
 def save_chrome_path(chrome_path):
-    # Đọc cấu hình hiện tại từ file
-    config = {}
-    try:
-        if os.path.exists(CONFIG_FILE):
-            with open(CONFIG_FILE, 'r') as file:
-                config = json.load(file)
+    config = read_json(CONFIG_FILE, {})
+    if chrome_path != config.get('chrome_path'):
+        if 'chrome.exe' not in chrome_path.lower():
+            chrome_path = os.path.join(chrome_path, 'chrome.exe')
+        config['chrome_path'] = chrome_path
+        write_json(CONFIG_FILE, config)
 
-        # Kiểm tra nếu đường dẫn Chrome mới khác với đường dẫn hiện tại thì mới lưu lại
-        if chrome_path != config.get('chrome_path'):
-            if 'chrome.exe' not in chrome_path.lower():
-                chrome_path = os.path.join(chrome_path, 'chrome.exe')
-            config['chrome_path'] = chrome_path
-            with open(CONFIG_FILE, 'w') as file:
-                json.dump(config, file, indent=4)
-
-    except json.JSONDecodeError as e:
-        print(f"Lỗi khi đọc hoặc ghi file cấu hình: {e}")
-    except PermissionError as e:
-        print(f"Không có quyền truy cập để ghi vào {CONFIG_FILE}: {e}")
-    except Exception as e:
-        print(f"Lỗi khi lưu đường dẫn Chrome: {e}")
 # Hàm để mở thư mục User Data
 def open_user_data_folder():
     use_chrome_path = chrome_var.get() or read_chrome_path()
@@ -354,20 +315,10 @@ def update_listbox_decorator(func):
     return wrapper
 
 # Hàm để đọc danh sách profiles từ tệp
-def read_profiles():
-    if os.path.exists(PROFILE_FILE):
-        with open(PROFILE_FILE, 'r') as file:
-            return json.load(file)
-    else:
-        return []
-
-# Đọc danh sách profiles từ tệp
-profiles = read_profiles()
+profiles = read_json(PROFILE_FILE, [])
 
 # Hàm để lưu danh sách profiles vào tệp
-def save_profiles(profiles):
-    with open(PROFILE_FILE, 'w') as file:
-        json.dump(profiles, file, indent=4)
+save_profiles = lambda profiles: write_json(PROFILE_FILE, profiles)
 
 # Hàm để mở Chrome và thêm profile nếu chưa tồn tại, sau đó mở Chrome
 @update_listbox_decorator
@@ -540,6 +491,7 @@ def update_listbox():
     profiles_listbox.delete(0, tk.END)
     for profile in sorted(profiles):
         profiles_listbox.insert(tk.END, profile)
+    update_profile_count()
 
 # Frame chứa các nút và Listbox
 profiles_frame = ttk.Frame(root, borderwidth=2, relief="groove")
@@ -552,6 +504,9 @@ show_listbox_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=1
 # Label cho danh sách profiles
 profiles_label = ttk.Label(show_listbox_frame, text="Danh sách Profiles:", font=("Helvetica", 12, "bold"))
 profiles_label.pack(side=tk.TOP, padx=5, pady=5)
+
+profile_count_label = ttk.Label(show_listbox_frame, text=f"Số lượng Profiles: {len(profiles)}", font=("Helvetica", 10))
+profile_count_label.pack(side=tk.TOP, padx=5, pady=2)
 
 # Listbox để hiển thị danh sách profiles
 profiles_listbox = tk.Listbox(show_listbox_frame, selectmode=tk.SINGLE, height=5, font=("Helvetica", 10))
@@ -573,6 +528,19 @@ def handle_double_click(event):
     update_profile_listbox()
 
 profiles_listbox.bind('<Double-Button-1>', handle_double_click)
+
+# Hàm để cập nhật số lượng profiles
+def update_profile_count():
+    profile_count_label.config(text=f"Số lượng Profiles: {len(profiles)}")
+
+# Hàm để đăng nhập Google từ profile được chọn trong Listbox
+def login_google_from_listbox_right_click():
+    selected_index = profiles_listbox.curselection()
+    if selected_index:
+        selected_profile = profiles_listbox.get(selected_index)
+        login_google(selected_profile)
+    else:
+        print("Vui lòng chọn một profile từ danh sách")
 
 # --------------------------------
 # End Chrome profile configuration
@@ -619,6 +587,7 @@ def delete_selected_profile():
 context_menu = Menu(root, tearoff=0)
 context_menu.add_command(label="Copy tên profile", command=lambda: copy_selected_profile())
 context_menu.add_command(label="Xóa profile", command=delete_selected_profile)
+context_menu.add_command(label="Đăng nhập Google", command=login_google_from_listbox_right_click)
 
 # Gán sự kiện chuột phải vào Listbox
 profiles_listbox.bind("<Button-3>", on_right_click)
@@ -1003,16 +972,11 @@ close_profile_listbox.pack(fill=tk.BOTH, expand=True)
 
 # Hàm để đọc danh sách URL từ tệp
 def read_urls():
-    if os.path.exists(URL_FILE):
-        with open(URL_FILE, 'r') as file:
-            return json.load(file)
-    else:
-        return []
+    return read_json(URL_FILE, [])
 
 # Hàm để lưu danh sách URL vào tệp
 def save_urls(urls):
-    with open(URL_FILE, 'w') as file:
-        json.dump(urls, file, indent=4)
+    write_json(URL_FILE, urls)
 
 # Hàm để lưu URL mới vào danh sách và `URL.json`, chỉ lưu khi URL là mới
 def save_url_to_list_and_file(url):
