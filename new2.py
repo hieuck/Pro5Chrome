@@ -280,7 +280,9 @@ def save_chrome_path(chrome_path):
 def open_user_data_folder():
     use_chrome_path = chrome_var.get() or read_chrome_path()
     
-    print(f"Đường dẫn Chrome đã sử dụng: {use_chrome_path.replace('\\', '/')}")
+    # print(f"Đường dẫn Chrome đã sử dụng: {use_chrome_path.replace('\\', '/')}")
+    use_chrome_path_display = use_chrome_path.replace('\\', '/')
+    print(f"Đường dẫn Chrome đã sử dụng: {use_chrome_path_display}")
     
     user_data_path = None
     
@@ -290,7 +292,9 @@ def open_user_data_folder():
         if 'chrome' in use_chrome_path.lower():
             chrome_folder_path = os.path.dirname(use_chrome_path)
             user_data_path = os.path.join(chrome_folder_path, 'User Data')  # Đường dẫn đến thư mục User Data của Cent Browser
-            print(f"Cent Browser User Data path: {user_data_path.replace('\\', '/')}")
+            user_data_path_display = user_data_path.replace('\\', '/')
+            print(f"Cent Browser User Data path: {user_data_path_display}")
+            # Kiểm tra xem thư mục có tồn tại không
             if not os.path.exists(user_data_path):
                 print(f"Thư mục User Data Cent Browser không tồn tại: {user_data_path}")
                 return
@@ -841,7 +845,7 @@ def find_chrome_window_by_profile(profile):
 def open_all_chrome_profiles():
     use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
     if 'chrome.exe' not in use_chrome_path.lower():
-        use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')    
+        use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
     if not profiles:
         print("Không có profile nào để mở.")
         return
