@@ -17,6 +17,7 @@ import pywinauto
 import psutil
 import webbrowser
 import screeninfo
+import tkinter.messagebox as messagebox
 
 # -----------------------------------------------------------------
 # --------------------Copyright (c) 2024 hieuck--------------------
@@ -577,9 +578,11 @@ def delete_selected_profile():
     selected_index = profiles_listbox.curselection()
     if selected_index:
         selected_profile = profiles_listbox.get(selected_index)
-        profiles_listbox.delete(selected_index)
-        profiles.remove(selected_profile)
-        save_profiles(profiles)
+        confirm = messagebox.askyesno("Xác nhận xóa", f"Bạn có chắc chắn muốn xóa profile '{selected_profile}' không?")
+        if confirm:
+            profiles_listbox.delete(selected_index)
+            profiles.remove(selected_profile)
+            save_profiles(profiles)
     else:
         print("Vui lòng chọn một profile từ danh sách")
 
