@@ -487,11 +487,41 @@ def login_google_from_listbox(event=None):
     else:
         print("Vui lòng chọn một profile từ danh sách")
 
-# Hàm để cập nhật Listbox theo thứ tự ABC
-def update_listbox():
+# Thêm biến trạng thái
+show_profiles = tk.BooleanVar(value=True)
+
+def update_profiles_listbox_masked():
+    """Cập nhật Listbox với profile bị che khi ẩn."""
+    profiles_listbox.delete(0, tk.END)
+    for profile in sorted(profiles):
+        profiles_listbox.insert(tk.END, '*' * len(profile))
+    update_profile_count()
+
+def update_profiles_listbox_normal():
+    """Cập nhật Listbox với profile bình thường."""
     profiles_listbox.delete(0, tk.END)
     for profile in sorted(profiles):
         profiles_listbox.insert(tk.END, profile)
+    update_profile_count()
+
+def toggle_profiles_listbox():
+    if show_profiles.get():
+        # Đang hiện, chuyển sang ẩn (che)
+        update_profiles_listbox_masked()
+        eye_button.config(text="👁️‍🗨️")  # icon mắt đóng
+        show_profiles.set(False)
+    else:
+        # Đang ẩn, chuyển sang hiện
+        update_profiles_listbox_normal()
+        eye_button.config(text="👁")  # icon mắt mở
+        show_profiles.set(True)
+
+# Thay đổi hàm update_listbox để tự động cập nhật đúng kiểu hiển thị
+def update_listbox():
+    if show_profiles.get():
+        update_profiles_listbox_normal()
+    else:
+        update_profiles_listbox_masked()
     update_profile_count()
 
 # Frame chứa các nút và Listbox
@@ -508,6 +538,10 @@ profiles_label.pack(side=tk.TOP, padx=5, pady=5)
 
 profile_count_label = ttk.Label(show_listbox_frame, text=f"Số lượng Profiles: {len(profiles)}", font=("Helvetica", 10))
 profile_count_label.pack(side=tk.TOP, padx=5, pady=2)
+
+# Nút hình con mắt để ẩn/hiện Listbox
+eye_button = ttk.Button(show_listbox_frame, text="👁", width=3, command=toggle_profiles_listbox)
+eye_button.pack(side=tk.TOP, padx=5, pady=2)
 
 # Listbox để hiển thị danh sách profiles
 profiles_listbox = tk.Listbox(show_listbox_frame, selectmode=tk.SINGLE, height=5, font=("Helvetica", 10))
