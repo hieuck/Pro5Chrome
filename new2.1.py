@@ -495,8 +495,9 @@ def login_google_from_listbox(event=None):
 show_profiles = tk.BooleanVar(value=True)
 
 def update_profiles_listbox_normal():
-    """Cập nhật Listbox với profile bình thường, có số thứ tự."""
     profiles_listbox.delete(0, tk.END)
+    max_profile_length = max((len(f"{idx}. {profile}") for idx, profile in enumerate(sorted(profiles), 1)), default=10)
+    profiles_listbox.config(width=max_profile_length + 2)
     for idx, profile in enumerate(sorted(profiles), 1):
         profiles_listbox.insert(tk.END, f"{idx}. {profile}")
     update_profile_count()
@@ -547,8 +548,9 @@ profile_count_label.pack(side=tk.TOP, padx=5, pady=2)
 eye_button = ttk.Button(show_listbox_frame, text="👁", width=3, command=toggle_profiles_listbox)
 eye_button.pack(side=tk.TOP, padx=5, pady=2)
 
-# Listbox để hiển thị danh sách profiles
-profiles_listbox = tk.Listbox(show_listbox_frame, selectmode=tk.SINGLE, height=5, font=("Helvetica", 10))
+# Tính chiều rộng tối đa dựa trên profile dài nhất (cộng thêm 4 ký tự cho số thứ tự và dấu ". ")
+max_profile_length = max((len(f"{idx}. {profile}") for idx, profile in enumerate(sorted(profiles), 1)), default=10)
+profiles_listbox = tk.Listbox(show_listbox_frame, selectmode=tk.SINGLE, height=5, width=max_profile_length + 2, font=("Helvetica", 10))
 profiles_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
 # Hàm để chọn profile khi click chuột trái vào Listbox
@@ -611,6 +613,9 @@ def copy_selected_profile():
     selected_index = profiles_listbox.curselection()
     if selected_index:
         selected_profile = profiles_listbox.get(selected_index)
+        # Loại bỏ số thứ tự nếu có
+        if '. ' in selected_profile:
+            selected_profile = selected_profile.split('. ', 1)[1]
         pyperclip.copy(selected_profile)
 
 # Hàm để xóa profile được chọn trong Listbox và cập nhật giao diện
@@ -618,6 +623,7 @@ def delete_selected_profile():
     selected_index = profiles_listbox.curselection()
     if selected_index:
         selected_profile = profiles_listbox.get(selected_index)
+        # Loại bỏ số thứ tự nếu có
         if '. ' in selected_profile:
             selected_profile = selected_profile.split('. ', 1)[1]
         confirm = messagebox.askyesno("Xác nhận xóa", f"Bạn có chắc chắn muốn xóa profile '{selected_profile}' không?")
@@ -625,6 +631,7 @@ def delete_selected_profile():
             profiles_listbox.delete(selected_index)
             profiles.remove(selected_profile)
             save_profiles(profiles)
+            update_listbox()
     else:
         print("Vui lòng chọn một profile từ danh sách")
 
