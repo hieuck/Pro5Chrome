@@ -557,8 +557,12 @@ profiles_listbox.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 def on_left_click(event):
     # Xác định vị trí của con trỏ chuột
     listbox_index = profiles_listbox.nearest(event.y)
-    # Đưa profile Combo box	
-    profile_var.set(profiles_listbox.get(listbox_index))
+    # Lấy giá trị từ Listbox
+    profile_value = profiles_listbox.get(listbox_index)
+    # Loại bỏ STT nếu có
+    if '. ' in profile_value:
+        profile_value = profile_value.split('. ', 1)[1]
+    profile_var.set(profile_value)
 
 # Thêm sự kiện chuột trái vào Listbox
 profiles_listbox.bind('<Button-1>', on_left_click)
