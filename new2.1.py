@@ -25,7 +25,7 @@ import tkinter.messagebox as messagebox
 
 # Tạo cửa sổ chính
 root = tk.Tk()
-root.title("Profiles Google Chrome")
+root.title("Profiles Google Chrome by hieuck")
 
 # Đường dẫn tệp profiles.json, config.json và URL.json trong cùng thư mục với file .py
 PROFILE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'profiles.json')
@@ -473,6 +473,8 @@ def open_profile_from_listbox(event=None):
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
+        if '. ' in selected_profile:
+            selected_profile = selected_profile.split('. ', 1)[1]
         open_chrome(selected_profile)
     else:
         print("Vui lòng chọn một profile từ danh sách")
@@ -483,6 +485,8 @@ def login_google_from_listbox(event=None):
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
+        if '. ' in selected_profile:
+            selected_profile = selected_profile.split('. ', 1)[1]
         login_google(selected_profile)
     else:
         print("Vui lòng chọn một profile từ danh sách")
@@ -490,18 +494,18 @@ def login_google_from_listbox(event=None):
 # Thêm biến trạng thái
 show_profiles = tk.BooleanVar(value=True)
 
-def update_profiles_listbox_masked():
-    """Cập nhật Listbox với profile bị che khi ẩn."""
+def update_profiles_listbox_normal():
+    """Cập nhật Listbox với profile bình thường, có số thứ tự."""
     profiles_listbox.delete(0, tk.END)
-    for profile in sorted(profiles):
-        profiles_listbox.insert(tk.END, '*' * len(profile))
+    for idx, profile in enumerate(sorted(profiles), 1):
+        profiles_listbox.insert(tk.END, f"{idx}. {profile}")
     update_profile_count()
 
-def update_profiles_listbox_normal():
-    """Cập nhật Listbox với profile bình thường."""
+def update_profiles_listbox_masked():
+    """Cập nhật Listbox với profile bị che khi ẩn, có số thứ tự."""
     profiles_listbox.delete(0, tk.END)
-    for profile in sorted(profiles):
-        profiles_listbox.insert(tk.END, profile)
+    for idx, profile in enumerate(sorted(profiles), 1):
+        profiles_listbox.insert(tk.END, f"{idx}. {'*' * len(profile)}")
     update_profile_count()
 
 def toggle_profiles_listbox():
@@ -573,6 +577,8 @@ def login_google_from_listbox_right_click():
     selected_index = profiles_listbox.curselection()
     if selected_index:
         selected_profile = profiles_listbox.get(selected_index)
+        if '. ' in selected_profile:
+            selected_profile = selected_profile.split('. ', 1)[1]
         login_google(selected_profile)
     else:
         print("Vui lòng chọn một profile từ danh sách")
@@ -612,6 +618,8 @@ def delete_selected_profile():
     selected_index = profiles_listbox.curselection()
     if selected_index:
         selected_profile = profiles_listbox.get(selected_index)
+        if '. ' in selected_profile:
+            selected_profile = selected_profile.split('. ', 1)[1]
         confirm = messagebox.askyesno("Xác nhận xóa", f"Bạn có chắc chắn muốn xóa profile '{selected_profile}' không?")
         if confirm:
             profiles_listbox.delete(selected_index)
@@ -779,6 +787,8 @@ def maximize_selected_chrome():
     print(f"Current selection index: {index}")  # Debug: Xem chỉ mục lựa chọn hiện tại
     if index:
         selected_profile = profiles_listbox.get(index[0])  # Lấy giá trị từ chỉ mục đầu tiên
+        if '. ' in selected_profile:
+            selected_profile = selected_profile.split('. ', 1)[1]
         print(f"Selected profile: {selected_profile}")  # Debug: Xem giá trị profile được chọn
         chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
@@ -797,6 +807,8 @@ def minimize_selected_chrome():
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
+        if '. ' in selected_profile:
+            selected_profile = selected_profile.split('. ', 1)[1]
         
         # Tìm cửa sổ Chrome hoặc CentBrowser
         chrome_window = find_chrome_window(selected_profile)
@@ -812,6 +824,8 @@ def restore_selected_chrome():
     index = profiles_listbox.curselection()
     if index:
         selected_profile = profiles_listbox.get(index)
+        if '. ' in selected_profile:
+            selected_profile = selected_profile.split('. ', 1)[1]
         
         # Tìm cửa sổ Chrome hoặc CentBrowser
         chrome_window = find_chrome_window(selected_profile)
