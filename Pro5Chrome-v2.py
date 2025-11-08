@@ -18,6 +18,19 @@ import psutil
 import webbrowser
 import screeninfo
 import tkinter.messagebox as messagebox
+import sys
+import io
+import logging
+
+# Configure logger to use UTF-8 for console output and replace characters that can't be encoded
+logger = logging.getLogger('Pro5Chrome')
+logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    stream = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    handler = logging.StreamHandler(stream)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 # -----------------------------------------------------------------
 # --------------------Copyright (c) 2024 hieuck--------------------
@@ -102,10 +115,10 @@ def read_json(file_path, default_value=None):
         else:
             return default_value
     except json.JSONDecodeError as e:
-        print(f"Error decoding JSON from {file_path}: {e}")
+        logger.error(f"Error decoding JSON from {file_path}: {e}")
         return default_value
     except Exception as e:
-        print(f"Error reading {file_path}: {e}")
+        logger.error(f"Error reading {file_path}: {e}")
         return default_value
 
 # Hàm để ghi JSON vào tệp
@@ -114,7 +127,7 @@ def write_json(file_path, data):
         with open(file_path, 'w') as file:
             json.dump(data, file, indent=4)
     except Exception as e:
-        print(f"Error writing to {file_path}: {e}")
+        logger.error(f"Error writing to {file_path}: {e}")
 
 # Hàm để đọc cấu hình từ tệp config.json
 def read_config():
@@ -124,8 +137,8 @@ def read_config():
     is_always_on_top = config.get('always_on_top', False)
     chrome_paths = config.get('chrome_paths', [default_chrome_path])
     chrome_path = config.get('chrome_path', default_chrome_path)
-    print(f"is_always_on_top: {is_always_on_top}")
-    print(f"use_chrome_path: {chrome_path}")
+    logger.debug(f"is_always_on_top: {is_always_on_top}")
+    logger.debug(f"use_chrome_path: {chrome_path}")
 
 # Hàm để lưu cấu hình
 def save_config():
@@ -139,10 +152,10 @@ def save_config():
 
 # Hàm xử lý lỗi JSON
 def handle_json_error():
-    print("Xử lý lỗi JSON...")
+    logger.warning("Xử lý lỗi JSON...")
     try:
         os.remove(CONFIG_FILE)  # Xóa tệp config.json khi gặp lỗi JSON
-        print(f"Đã xóa {CONFIG_FILE} do lỗi JSON.")
+        logger.info(f"Đã xóa {CONFIG_FILE} do lỗi JSON.")
         
         # Tạo lại tệp config.json với dữ liệu mặc định
         default_config = {
@@ -150,13 +163,13 @@ def handle_json_error():
             'chrome_paths': [default_chrome_path]           
         }
         write_json(CONFIG_FILE, default_config)
-        print(f"Đã tạo lại tệp {CONFIG_FILE} với dữ liệu mặc định.")
-        
+        logger.info(f"Đã tạo lại tệp {CONFIG_FILE} với dữ liệu mặc định.")
+
         # Trả về cấu hình mặc định
         return default_config
 
     except Exception as e:
-        print(f"Lỗi khi xử lý lỗi JSON: {e}")
+        logger.exception(f"Lỗi khi xử lý lỗi JSON: {e}")
         return None
 
 # Hàm để cập nhật trạng thái always on top
@@ -164,7 +177,7 @@ def toggle_always_on_top():
     global is_always_on_top
     is_always_on_top = not is_always_on_top
     root.attributes('-topmost', is_always_on_top)
-    print(f"Ứng dụng luôn hiển thị trên cùng: {is_always_on_top}")
+    logger.info(f"Ứng dụng luôn hiển thị trên cùng: {is_always_on_top}")
     save_config()  # Lưu trạng thái vào config.json
     always_on_top_var.set(is_always_on_top)  # Đồng bộ hóa checkbox với giá trị mới của is_always_on_top
 
@@ -218,7 +231,7 @@ def save_chrome_path(chrome_path):
 def open_user_data_folder():
     use_chrome_path = chrome_var.get() or read_chrome_path()
     
-    print(f"Đường dẫn Chrome đã sử dụng: {use_chrome_path}")
+    logger.debug(f"Đường dẫn Chrome đã sử dụng: {use_chrome_path}")
     
     if 'google' in use_chrome_path.lower():
         user_data_path = os.path.join(os.getenv('LOCALAPPDATA'), 'Google', 'Chrome', 'User Data')
@@ -227,13 +240,13 @@ def open_user_data_folder():
             chrome_folder_path = os.path.dirname(use_chrome_path)
             user_data_path = os.path.join(chrome_folder_path, 'User Data')  # Đường dẫn đến thư mục User Data của Cent Browser
         
-            print(f"Cent Browser User Data path: {user_data_path}")
+            logger.debug(f"Cent Browser User Data path: {user_data_path}")
         
             if not os.path.exists(user_data_path):
-                print(f"Thư mục User Data không tồn tại: {user_data_path}")
+                logger.error(f"Thư mục User Data không tồn tại: {user_data_path}")
                 return
     else:
-        print("Không thể mở thư mục User Data cho đường dẫn này.")
+        logger.error("Không thể mở thư mục User Data cho đường dẫn này.")
         return
     
     user_data_path = os.path.abspath(user_data_path)
@@ -343,7 +356,7 @@ def open_chrome_and_add_profile():
         
         open_chrome(selected_profile)
     else:
-        print("Vui lòng chọn hoặc nhập một profile")
+        logger.warning("Vui lòng chọn hoặc nhập một profile")
 
 # Hàm để mở Chrome với profile được chọn
 @update_listbox_decorator
@@ -371,7 +384,7 @@ def login_google_from_combobox(event=None):
     if selected_profile:
         login_google(selected_profile)
     else:
-        print("Vui lòng chọn một profile từ Combobox")
+        logger.warning("Vui lòng chọn một profile từ Combobox")
 
 # Hàm để đóng tất cả các tiến trình Chrome
 @update_listbox_decorator
@@ -382,7 +395,7 @@ def close_chrome():
         else:  # Unix-based
             os.system("pkill chrome")
     except Exception as e:
-        print(f"Đã xảy ra lỗi khi đóng Chrome: {e}")
+        logger.exception(f"Đã xảy ra lỗi khi đóng Chrome: {e}")
 
 # Hàm để xử lý khi nhấn Enter trên Combobox để mở Chrome
 @update_listbox_decorator
@@ -477,7 +490,7 @@ def open_profile_from_listbox(event=None):
             selected_profile = selected_profile.split('. ', 1)[1]
         open_chrome(selected_profile)
     else:
-        print("Vui lòng chọn một profile từ danh sách")
+        logger.warning("Vui lòng chọn một profile từ danh sách")
 
 # Hàm để đăng nhập Google với profile từ Listbox
 @update_listbox_decorator
@@ -489,7 +502,7 @@ def login_google_from_listbox(event=None):
             selected_profile = selected_profile.split('. ', 1)[1]
         login_google(selected_profile)
     else:
-        print("Vui lòng chọn một profile từ danh sách")
+        logger.warning("Vui lòng chọn một profile từ danh sách")
 
 # Thêm biến trạng thái
 show_profiles = tk.BooleanVar(value=True)
@@ -587,7 +600,7 @@ def login_google_from_listbox_right_click():
             selected_profile = selected_profile.split('. ', 1)[1]
         login_google(selected_profile)
     else:
-        print("Vui lòng chọn một profile từ danh sách")
+        logger.warning("Vui lòng chọn một profile từ danh sách")
 
 # --------------------------------
 # End Chrome profile configuration
@@ -637,7 +650,7 @@ def delete_selected_profile():
             save_profiles(profiles)
             update_listbox()
     else:
-        print("Vui lòng chọn một profile từ danh sách")
+        logger.warning("Vui lòng chọn một profile từ danh sách")
 
 # Tạo menu ngữ cảnh
 context_menu = Menu(root, tearoff=0)
@@ -703,7 +716,7 @@ def arrange_chrome_windows():
         
         # Kiểm tra xem num_rows có bằng 0 không
         if num_rows == 0:
-            print("Không có cửa sổ để sắp xếp.")
+            logger.info("Không có cửa sổ để sắp xếp.")
             return  # Dừng hàm nếu không có cửa sổ
 
         # Tính kích thước mới cho cửa sổ
@@ -727,13 +740,13 @@ def arrange_chrome_windows():
             try:
                 win.moveTo(x, y)
                 win.resizeTo(window_width, window_height)
-                print(f"Cửa sổ {win.title} đã được sắp xếp tại ({x}, {y}) với kích thước ({window_width}, {window_height})")
+                logger.info(f"Cửa sổ {win.title} đã được sắp xếp tại ({x}, {y}) với kích thước ({window_width}, {window_height})")
             except Exception as e:
-                print(f"Lỗi khi di chuyển hoặc thay đổi kích thước cửa sổ {win.title}: {e}")
+                logger.exception(f"Lỗi khi di chuyển hoặc thay đổi kích thước cửa sổ {win.title}: {e}")
 
-        print("Đã sắp xếp các cửa sổ Chrome thành công.")
+        logger.info("Đã sắp xếp các cửa sổ Chrome thành công.")
     else:
-        print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào.")
+        logger.info("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào.")
 
 # Tạo hàm tìm kiếm và xử lý cửa sổ Chrome theo profile
 def find_chrome_window_by_profile(profile):
@@ -746,13 +759,13 @@ def find_chrome_window_by_profile(profile):
         if proc.info['name'] == 'chrome.exe' or proc.info['name'] == 'CentBrowser.exe':
             try:
                 if any(profile_directory in arg for arg in proc.info['cmdline']):
-                    print(f"Found process with profile: {proc.info['cmdline']}")
+                    logger.debug(f"Found process with profile: {proc.info['cmdline']}")
                     windows = gw.getWindowsWithTitle(proc.info['name'])
                     for win in windows:
                         if proc.pid == win._hWnd:
                             return win
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as e:
-                print(f"Error accessing process info: {e}")
+                logger.exception(f"Error accessing process info: {e}")
                 continue
     return None
 
@@ -763,7 +776,7 @@ def open_all_chrome_profiles():
     if 'chrome.exe' not in use_chrome_path.lower():
         use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')    
     if not profiles:
-        print("Không có profile nào để mở.")
+        logger.warning("Không có profile nào để mở.")
         return
     
     for profile in profiles:
@@ -795,23 +808,24 @@ def find_chrome_window(profile_name):
 @update_listbox_decorator
 def maximize_selected_chrome():
     index = profiles_listbox.curselection()
-    print(f"Current selection index: {index}")  # Debug: Xem chỉ mục lựa chọn hiện tại
+    logger.debug(f"Current selection index: {index}")  # Debug: Xem chỉ mục lựa chọn hiện tại
     if index:
         selected_profile = profiles_listbox.get(index[0])  # Lấy giá trị từ chỉ mục đầu tiên
         if '. ' in selected_profile:
             selected_profile = selected_profile.split('. ', 1)[1]
-        print(f"Selected profile: {selected_profile}")  # Debug: Xem giá trị profile được chọn
+
+        logger.debug(f"Selected profile: {selected_profile}")  # Debug: Xem giá trị profile được chọn
         chrome_window = find_chrome_window(selected_profile)
         if chrome_window:
             try:
                 chrome_window.maximize()  # Tối đa hóa cửa sổ
-                print(f"Đã phóng to cửa sổ cho hồ sơ '{selected_profile}'")
+                logger.info(f"Đã phóng to cửa sổ cho hồ sơ '{selected_profile}'")
             except Exception as e:
-                print(f"Lỗi khi phóng to cửa sổ: {e}")
+                logger.exception(f"Lỗi khi phóng to cửa sổ: {e}")
         else:
-            print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
+            logger.warning(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
     else:
-        print("Vui lòng chọn một hồ sơ để phóng to.")
+        logger.warning("Vui lòng chọn một hồ sơ để phóng to.")
 
 @update_listbox_decorator
 def minimize_selected_chrome():
@@ -826,9 +840,9 @@ def minimize_selected_chrome():
         if chrome_window:
             chrome_window.minimize()
         else:
-            print(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
+            logger.warning(f"Không tìm thấy cửa sổ cho hồ sơ '{selected_profile}'")
     else:
-        print("Vui lòng chọn một hồ sơ để thu nhỏ.")
+        logger.warning("Vui lòng chọn một hồ sơ để thu nhỏ.")
 
 @update_listbox_decorator
 def restore_selected_chrome():
@@ -845,17 +859,17 @@ def restore_selected_chrome():
             if chrome_window.isMinimized:
                 chrome_window.restore()
                 chrome_window.activate()
-                print(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ '{selected_profile}'")
+                logger.info(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ '{selected_profile}'")
             elif not chrome_window.isActive:
                 chrome_window.restore()
                 chrome_window.activate()
-                print(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ gần nhất")
+                logger.info(f"Đã khôi phục và kích hoạt cửa sổ cho hồ sơ gần nhất")
             else:
-                print(f"Cửa sổ cho hồ sơ gần nhất đã hoạt động trước đó.")
+                logger.info(f"Cửa sổ cho hồ sơ gần nhất đã hoạt động trước đó.")
         else:
-            print(f"Không tìm thấy cửa sổ cho hồ sơ gần nhất")
+            logger.warning(f"Không tìm thấy cửa sổ cho hồ sơ gần nhất")
     else:
-        print("Vui lòng chọn một hồ sơ để khôi phục.")
+        logger.warning("Vui lòng chọn một hồ sơ để khôi phục.")
 
 # Hàm để đóng cửa sổ Chrome hoặc Cent Browser
 @update_listbox_decorator
@@ -877,20 +891,20 @@ def close_chrome_window():
                 try:
                     # Kích hoạt cửa sổ
                     win.activate()
-                    print(f"Đã chuyển đến và kích hoạt cửa sổ: {win.title}")
+                    logger.info(f"Đã chuyển đến và kích hoạt cửa sổ: {win.title}")
 
                     # Đóng cửa sổ
                     win.close()
-                    print(f"Đã đóng cửa sổ: {win.title}")
+                    logger.info(f"Đã đóng cửa sổ: {win.title}")
 
                     return  # Kết thúc sau khi đóng thành công cửa sổ
                 except Exception as e:
-                    print(f"Lỗi khi đóng cửa sổ: {e}")
+                    logger.exception(f"Lỗi khi đóng cửa sổ: {e}")
 
         # Nếu không tìm thấy cửa sổ phù hợp để đóng
-        print("Không tìm thấy cửa sổ phù hợp để đóng.")
+        logger.info("Không tìm thấy cửa sổ phù hợp để đóng.")
     else:
-        print("Không tìm thấy cửa sổ Chrome hoặc Cent Browser nào để đóng.")
+        logger.info("Không tìm thấy cửa sổ Chrome hoặc Cent Browser nào để đóng.")
 
 @update_listbox_decorator
 def switch_tab_chrome():
@@ -918,17 +932,17 @@ def switch_tab_chrome():
             try:
                 # Kích hoạt cửa sổ mà không di chuyển chuột
                 chrome_window.activate()
-                print(f"Đã chuyển đến và kích hoạt cửa sổ: {chrome_window.title}")
+                logger.info(f"Đã chuyển đến và kích hoạt cửa sổ: {chrome_window.title}")
 
                 # Tăng chỉ số cửa sổ hiện tại để chuyển sang cửa sổ kế tiếp trong lần nhấn nút tiếp theo
                 current_window_index += 1
 
             except Exception as e:
-                print(f"Lỗi khi chuyển tab: {e}")
+                logger.exception(f"Lỗi khi chuyển tab: {e}")
         else:
-            print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào sau khi loại bỏ cửa sổ chính.")
+            logger.info("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào sau khi loại bỏ cửa sổ chính.")
     else:
-        print("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào.")
+        logger.info("Không tìm thấy cửa sổ Chrome hoặc CentBrowser nào.")
 
 # Frame chứa tất cả các thành phần điều khiển
 container_frame = ttk.Frame(profiles_frame, borderwidth=2, relief="solid")  # Tạo frame có khung
@@ -1048,7 +1062,7 @@ def save_url_to_list_and_file(url):
         save_urls(urls)
         update_urls_listbox()
     else:
-        print(f"URL '{url}' đã tồn tại trong danh sách.")
+        logger.info(f"URL '{url}' đã tồn tại trong danh sách.")
 
 # Hàm để cập nhật Listbox URLs
 def update_urls_listbox():
@@ -1065,7 +1079,7 @@ def open_and_save_url():
         save_url_to_list_and_file(new_url)
         new_url_entry.delete(0, tk.END)  # Xóa nội dung trong trường nhập sau khi lưu
     else:
-        print("Vui lòng nhập một URL")
+        logger.warning("Vui lòng nhập một URL")
 
 # Hàm để lưu URL mới vào danh sách và cập nhật giao diện
 def add_new_url():
@@ -1074,7 +1088,7 @@ def add_new_url():
         save_url_to_list_and_file(new_url)
         new_url_entry.delete(0, tk.END)  # Xóa nội dung trong trường nhập sau khi lưu
     else:
-        print("Vui lòng nhập một URL")
+        logger.warning("Vui lòng nhập một URL")
 
 # Tạo frame mới cho khung nhập URL
 url_input_frame = ttk.Frame(root, borderwidth=2, relief="groove")
@@ -1137,7 +1151,7 @@ def open_url_from_listbox(event=None):
         else:
             open_url(selected_url)
     else:
-        print("Vui lòng chọn một URL từ danh sách")
+        logger.warning("Vui lòng chọn một URL từ danh sách")
 
 # Hàm để mở URL được chọn trong Chrome
 def open_url(url):
@@ -1156,7 +1170,7 @@ def delete_selected_urls():
         save_urls(updated_urls)
         update_urls_listbox()
     else:
-        print("Vui lòng chọn ít nhất một URL để xóa")
+        logger.warning("Vui lòng chọn ít nhất một URL để xóa")
 
 # Hàm để mở URL với toàn bộ Chrome profiles
 def open_url_all_profiles():
@@ -1164,7 +1178,7 @@ def open_url_all_profiles():
     if 'chrome.exe' not in use_chrome_path.lower():
         use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
     if not profiles:
-        print("Không có profile nào để mở.")
+        logger.warning("Không có profile nào để mở.")
         return
     
     selected_url_index = urls_listbox.curselection()
@@ -1174,7 +1188,7 @@ def open_url_all_profiles():
             profile_directory = f"--profile-directory=Profile {profile}"
             subprocess.Popen([use_chrome_path, profile_directory, selected_url])
     else:
-        print("Vui lòng chọn một URL từ danh sách")
+        logger.warning("Vui lòng chọn một URL từ danh sách")
 
 # Hàm để xóa danh sách URL và cập nhật giao diện
 def clear_urls_list():
@@ -1244,7 +1258,7 @@ def login_google_selenium(email, password, profile):
         if os.path.isfile(chrome_exe_path):
             use_chrome_path = chrome_exe_path
         else:
-            print("Không tìm thấy tệp chrome.exe trong thư mục chrome-win64")
+            logger.error("Không tìm thấy tệp chrome.exe trong thư mục chrome-win64")
             return
     else:
         # Nếu không tìm thấy chromedriver.exe, sử dụng đường dẫn đã cung cấp
@@ -1255,7 +1269,7 @@ def login_google_selenium(email, password, profile):
     if os.path.isfile(use_chrome_path):
         chrome_options.binary_location = use_chrome_path
     else:
-        print("Không tìm thấy tệp chrome.exe trong đường dẫn đã cung cấp")
+        logger.error("Không tìm thấy tệp chrome.exe trong đường dẫn đã cung cấp")
         return
 
     try:
@@ -1282,11 +1296,11 @@ def login_google_selenium(email, password, profile):
         
         # Kiểm tra đăng nhập thành công
         if "myaccount.google.com" in driver.current_url:
-            print("Đăng nhập thành công!")
+            logger.info("Đăng nhập thành công!")
         else:
-            print("Đăng nhập thất bại.")
+            logger.warning("Đăng nhập thất bại.")
     except Exception as e:
-        print(f"Đã xảy ra lỗi trong quá trình đăng nhập: {e}")
+        logger.exception(f"Đã xảy ra lỗi trong quá trình đăng nhập: {e}")
         if driver:
             driver.quit()
     finally:
