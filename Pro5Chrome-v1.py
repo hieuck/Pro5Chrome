@@ -1,12 +1,18 @@
 import tkinter as tk
 from tkinter import ttk, Menu
-import pro5chrome.selenium_utils as selenium_utils
-import pygetwindow as gw
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import subprocess
 import json
 import os
 import time
-import pro5chrome.chrome_control as chrome_control
+import pygetwindow as gw
 import pywinauto
 import psutil
 import webbrowser
@@ -16,9 +22,15 @@ import sys
 import io
 import logging
 
-# Import centralized logger, config and utils from pro5chrome package
-from pro5chrome import logger, PROFILE_FILE, CONFIG_FILE, URL_FILE, DEFAULT_CONFIG, default_chrome_path, read_json, write_json, normalize_paths
-from pro5chrome import chrome_control as chrome_control_module
+# Configure logger to use UTF-8 for console output and replace characters that can't be encoded
+logger = logging.getLogger('Pro5Chrome')
+logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    stream = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    handler = logging.StreamHandler(stream)
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 # -----------------------------------------------------------------
 # --------------------Copyright (c) 2024 hieuck--------------------
@@ -28,8 +40,12 @@ from pro5chrome import chrome_control as chrome_control_module
 root = tk.Tk()
 root.title("Profiles Google Chrome by hieuck")
 
-# PROFILE_FILE, CONFIG_FILE, URL_FILE, DEFAULT_CONFIG, default_chrome_path,
-# read_json, write_json, normalize_paths and logger are imported from pro5chrome package
+# Đường dẫn tệp profiles.json, config.json và URL.json trong cùng thư mục với file .py
+PROFILE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'profiles.json')
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config.json')
+URL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'URL.json')
+
+# Khởi tạo các biến toàn cục
 profile_window_map = {}
 current_window_index = 0
 
@@ -74,7 +90,44 @@ open_url_button.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5)
 # Start Chrome configuration
 # --------------------------
 
-# (Logging, config and json helpers are centralized in pro5chrome package)
+# Đường dẫn Chrome mặc định nếu không có trong config
+default_chrome_path = 'C:/Program Files/Google/Chrome/Application/chrome.exe'
+
+# Cấu hình mặc định
+DEFAULT_CONFIG = {
+    "always_on_top": False,
+    "chrome_paths": ["C:/Program Files/Google/Chrome/Application/chrome.exe"],
+    "chrome_path": "C:/Program Files/Google/Chrome/Application/chrome.exe"
+}
+
+# Hàm chuẩn hóa đường dẫn
+def normalize_paths(config):
+    if 'chrome_paths' in config:
+        config['chrome_paths'] = [path.replace("\\", "/") for path in config['chrome_paths']]
+    return config
+
+# Hàm để đọc JSON từ tệp
+def read_json(file_path, default_value=None):
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                return json.load(file)
+        else:
+            return default_value
+    except json.JSONDecodeError as e:
+        logger.error(f"Error decoding JSON from {file_path}: {e}")
+        return default_value
+    except Exception as e:
+        logger.error(f"Error reading {file_path}: {e}")
+        return default_value
+
+# Hàm để ghi JSON vào tệp
+def write_json(file_path, data):
+    try:
+        with open(file_path, 'w') as file:
+            json.dump(data, file, indent=4)
+    except Exception as e:
+        logger.error(f"Error writing to {file_path}: {e}")
 
 # Hàm để đọc cấu hình từ tệp config.json
 def read_config():
@@ -1185,18 +1238,74 @@ delete_urls_button.pack(side=tk.LEFT, padx=5)
 driver = None
 selected_profile = tk.StringVar()
 
-# Delegate Selenium login to pro5chrome.selenium_utils.login_google_selenium
+# Hàm để đăng nhập vào Google với Selenium
 def login_google_selenium(email, password, profile):
-    """Wrapper that delegates Selenium-based login to the selenium_utils module.
-    This keeps the main script lightweight and defers Selenium imports/logic to the helper.
-    """
+    global driver
+    chrome_options = ChromeOptions()
+    
+    # Sử dụng đường dẫn chrome đã được cung cấp hoặc tìm kiếm mặc định
+    use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
+    
+    # Đường dẫn đến thư mục chứa chrome.exe và chromedriver.exe
+    program_directory = os.path.dirname(os.path.abspath(__file__))
+    chrome_folder = os.path.join(program_directory, 'chrome-win64')
+    chromedriver_path = os.path.join(chrome_folder, 'chromedriver.exe')
+    chrome_exe_path = os.path.join(chrome_folder, 'chrome.exe')
+
+    # Kiểm tra sự tồn tại của chromedriver.exe trong thư mục chrome-win64 trước
+    if os.path.isfile(chromedriver_path):
+        # Nếu tồn tại chromedriver.exe, sử dụng chrome.exe từ thư mục này
+        if os.path.isfile(chrome_exe_path):
+            use_chrome_path = chrome_exe_path
+        else:
+            logger.error("Không tìm thấy tệp chrome.exe trong thư mục chrome-win64")
+            return
+    else:
+        # Nếu không tìm thấy chromedriver.exe, sử dụng đường dẫn đã cung cấp
+        if not use_chrome_path or 'chrome.exe' not in use_chrome_path.lower():
+            use_chrome_path = os.path.join(use_chrome_path, 'chrome.exe')
+
+    # Kiểm tra lại sự tồn tại của tệp chrome.exe
+    if os.path.isfile(use_chrome_path):
+        chrome_options.binary_location = use_chrome_path
+    else:
+        logger.error("Không tìm thấy tệp chrome.exe trong đường dẫn đã cung cấp")
+        return
+
     try:
-        program_directory = os.path.dirname(os.path.abspath(__file__))
-        chrome_folder = os.path.join(program_directory, 'chrome-win64')
-        use_chrome_path = chrome_var.get() or read_chrome_path() or default_chrome_path
-        return selenium_utils.login_google_selenium(email, password, profile, use_chrome_path=use_chrome_path, chrome_folder=chrome_folder)
+        # Tạo dịch vụ Chrome với chromedriver
+        service = ChromeService(executable_path=chromedriver_path if os.path.isfile(chromedriver_path) else ChromeDriverManager().install())
+        # Khởi động trình duyệt Chrome với các tùy chọn đã thiết lập
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        
+        driver.get('https://accounts.google.com')
+        
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, 'identifierId')))
+        
+        # Tìm và nhập email
+        email_field = driver.find_element(By.ID, 'identifierId')
+        email_field.send_keys(email)
+        email_field.send_keys(Keys.RETURN)
+        
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, 'password')))
+        
+        # Tìm và nhập mật khẩu
+        password_field = driver.find_element(By.NAME, 'password')
+        password_field.send_keys(password)
+        password_field.send_keys(Keys.RETURN)
+        
+        # Kiểm tra đăng nhập thành công
+        if "myaccount.google.com" in driver.current_url:
+            logger.info("Đăng nhập thành công!")
+        else:
+            logger.warning("Đăng nhập thất bại.")
     except Exception as e:
-        logger.exception(f"Error delegating selenium login: {e}")
+        logger.exception(f"Đã xảy ra lỗi trong quá trình đăng nhập: {e}")
+        if driver:
+            driver.quit()
+    finally:
+        if driver:
+            driver.quit()
 
 # Tạo frame mới cho Selenium và các phần liên quan
 def create_selenium_frame():
