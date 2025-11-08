@@ -1,11 +1,19 @@
-selenium
-webdriver-manager
-pygetwindow
-pywinauto
-psutil
-screeninfo
-pyperclip
-pyautogui
-pynput
-pillow
-requests
+# Dependencies required to run the Pro5Chrome application
+# Use: pip install -r requirements.txt
+
+selenium>=4.14.0
+webdriver-manager>=4.0.0
+pygetwindow>=0.0.9
+pywinauto>=0.6.8
+psutil>=5.9.5
+screeninfo>=0.8.1
+pyperclip>=1.8.2
+pyautogui>=0.9.53
+pynput>=1.7.6
+pillow>=9.5.0
+requests>=2.31.0
+
+# Notes:
+# - tkinter is part of the Python standard library on Windows (no pip package).
+# - On Windows, installing pywinauto will pull in pywin32; if you see issues, run:
+#   pip install pywin32
