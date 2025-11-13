@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Net; // Added for URL Encoding
 using System.Windows.Forms;
 
 public class MainForm : Form
@@ -77,7 +78,7 @@ public class MainForm : Form
     private TextBox emailTextBox;
     private Label passwordLabel;
     private TextBox passwordTextBox;
-    private Button seleniumLoginButton;
+    private Button prefillEmailLoginButton; // Renamed from seleniumLoginButton
 
     public MainForm()
     {
@@ -171,9 +172,11 @@ public class MainForm : Form
         emailTextBox = new TextBox { Location = new Point(emailLabel.Right + 5, 10), Width = 200 };
         passwordLabel = new Label { Text = "Password:", Location = new Point(emailTextBox.Right + 10, 12), AutoSize = true };
         passwordTextBox = new TextBox { Location = new Point(passwordLabel.Right + 5, 10), Width = 200, UseSystemPasswordChar = true };
-        seleniumLoginButton = new Button { Text = "Đăng Nhập Google (Selenium)", Location = new Point(passwordTextBox.Right + 10, 9), AutoSize = true, Enabled = false }; // Disabled
+        
+        prefillEmailLoginButton = new Button { Text = "Điền Email & Đăng nhập", Location = new Point(passwordTextBox.Right + 10, 9), AutoSize = true, Enabled = true }; // Changed
+        prefillEmailLoginButton.Click += PrefillEmailLoginButton_Click; // Added
 
-        bottomPanel.Controls.AddRange(new Control[] { emailLabel, emailTextBox, passwordLabel, passwordTextBox, seleniumLoginButton });
+        bottomPanel.Controls.AddRange(new Control[] { emailLabel, emailTextBox, passwordLabel, passwordTextBox, prefillEmailLoginButton });
 
         // --- Main Content Area ---
         var mainPanel = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.FixedSingle };
@@ -405,6 +408,36 @@ public class MainForm : Form
         statusUpdateTimer.Start();
 
         this.ResumeLayout(false);
+    }
+
+    private void PrefillEmailLoginButton_Click(object sender, EventArgs e)
+    {
+        string email = emailTextBox.Text;
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            MessageBox.Show("Vui lòng nhập địa chỉ email.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        string selectedProfile = profilesListBox.SelectedItem as string;
+        if (string.IsNullOrWhiteSpace(selectedProfile))
+        {
+            selectedProfile = profileComboBox.Text;
+        }
+
+        if (string.IsNullOrWhiteSpace(selectedProfile))
+        {
+            MessageBox.Show("Vui lòng chọn một profile từ danh sách hoặc ô nhập liệu.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+        
+        string baseUrl = "https://accounts.google.com/AccountChooser";
+        string continueUrl = "https://www.google.com";
+        string loginUrl = $"{baseUrl}?Email={WebUtility.UrlEncode(email)}&continue={WebUtility.UrlEncode(continueUrl)}";
+
+        _profileManager.OpenChrome(selectedProfile, loginUrl);
+        _profileManager.AddProfile(selectedProfile);
+        RefreshProfileLists();
     }
 
     private void MainForm_Load(object sender, EventArgs e)
