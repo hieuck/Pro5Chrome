@@ -260,12 +260,20 @@ public class Pro5ChromeManager
             {
                 arguments += $"\"{url}\"";
             }
-            Process.Start(_config.SelectedChromePath, arguments);
+            
+            ProcessStartInfo startInfo = new ProcessStartInfo(_config.SelectedChromePath, arguments);
+            Process proc = Process.Start(startInfo);
+
+            // --- Integration with WindowManager ---
+            if (proc != null)
+            {
+                WindowManager.RegisterProfileProcess(profileName, proc);
+            }
         }
         catch (Exception ex) { MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}"); }
     }
 
-    // Simplified method that calls the new lean WindowManager method.
+    // Calls the updated WindowManager method which now handles unregistering the profile.
     public void CloseProfileWindow(string profileName) 
     { 
         if (!string.IsNullOrWhiteSpace(profileName))

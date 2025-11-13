@@ -2,16 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Windows.Forms;
+using System.Threading;
 
 public static class WindowManager
 {
-    // P/Invoke Signatures
+    // --- Win32 API Signatures ---
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -24,97 +21,133 @@ public static class WindowManager
     private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindow(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsWindowVisible(IntPtr hWnd);
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
-    // Window state constants
+    // --- Window State Constants ---
     public const int SW_MAXIMIZE = 3;
     public const int SW_MINIMIZE = 6;
     public const int SW_RESTORE = 9;
     public const uint WM_CLOSE = 0x0010;
 
+    // --- State Tracking ---
+    private static readonly Dictionary<string, Process> _profileProcesses = new Dictionary<string, Process>();
+    private static readonly Dictionary<string, IntPtr> _profileWindowHandles = new Dictionary<string, IntPtr>();
+
+    // --- Public Methods ---
 
     /// <summary>
-    /// Finds the handle of a Chrome window based on its profile name in the title.
+    /// Registers a process associated with a profile name for window tracking.
     /// </summary>
-    /// <param name="profileName">The name of the profile to find.</param>
-    /// <returns>The window handle (IntPtr) if found; otherwise, IntPtr.Zero.</returns>
-    private static IntPtr FindWindowForProfile(string profileName)
+    public static void RegisterProfileProcess(string profileName, Process process)
     {
-        if (string.IsNullOrEmpty(profileName)) return IntPtr.Zero;
-
-        IntPtr foundHandle = IntPtr.Zero;
-        string searchString1 = $" - {profileName} - "; // e.g., "... - MyProfile - Google Chrome"
-        string searchString2 = $"{profileName} - "; // e.g., "MyProfile - Google Chrome"
-
-        EnumWindows((hWnd, lParam) =>
+        if (string.IsNullOrEmpty(profileName) || process == null) return;
+        _profileProcesses[profileName] = process;
+        // Attempt to find the handle proactively. It might take a moment to appear.
+        ThreadPool.QueueUserWorkItem(_ => 
         {
-            if (!IsWindowVisible(hWnd) || GetWindowTextLength(hWnd) == 0) return true; // Skip invisible windows
+            Thread.Sleep(500); // Wait for the window to likely be created
+            FindAndCacheWindowHandle(profileName);
+        });
+    }
 
-            GetWindowThreadProcessId(hWnd, out uint pid);
-            try
-            {
-                Process proc = Process.GetProcessById((int)pid);
-                // Ensure it's a chrome process
-                if (!proc.ProcessName.Equals("chrome", StringComparison.OrdinalIgnoreCase)) return true;
-            }
-            catch (ArgumentException) { /* Process likely exited */ return true; }
-
-            StringBuilder titleBuilder = new StringBuilder(GetWindowTextLength(hWnd) + 1);
-            GetWindowText(hWnd, titleBuilder, titleBuilder.Capacity);
-            string windowTitle = titleBuilder.ToString();
-
-            // Check if the title matches the profile name pattern
-            if (windowTitle.Contains(searchString1) || windowTitle.StartsWith(searchString2))
-            {
-                foundHandle = hWnd;
-                return false; // Stop enumeration, we found it
-            }
-
-            return true; // Continue enumeration
-        }, IntPtr.Zero);
-
-        return foundHandle;
+    /// <summary>
+    /// Removes a profile from tracking.
+    /// </summary>
+    public static void UnregisterProfile(string profileName)
+    {
+        if (string.IsNullOrEmpty(profileName)) return;
+        _profileProcesses.Remove(profileName);
+        _profileWindowHandles.Remove(profileName);
     }
 
     /// <summary>
     /// Performs a window state change action on a specific Chrome profile window.
     /// </summary>
-    /// <param name="profileName">The name of the profile.</param>
-    /// <param name="command">The window state command (e.g., SW_MINIMIZE, SW_MAXIMIZE).</param>
     public static void PerformActionOnProfileWindow(string profileName, int command)
     {
-        if (string.IsNullOrEmpty(profileName)) return;
-
-        IntPtr targetHWnd = FindWindowForProfile(profileName);
-
-        if (targetHWnd != IntPtr.Zero)
-        {
-            ShowWindow(targetHWnd, command);
-        }
-        else
-        {
-            // Optional: Provide feedback if the window wasn't found
-            // MessageBox.Show($"Không tìm thấy cửa sổ cho profile '{profileName}'.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
+        IntPtr targetHWnd = GetWindowHandle(profileName);
+        if (targetHWnd != IntPtr.Zero) ShowWindow(targetHWnd, command);
     }
 
-     /// <summary>
+    /// <summary>
     /// Sends a close message to a specific Chrome profile window.
     /// </summary>
-    /// <param name="profileName">The name of the profile.</param>
     public static void CloseProfileWindow(string profileName)
     {
-        if (string.IsNullOrEmpty(profileName)) return;
-
-        IntPtr targetHWnd = FindWindowForProfile(profileName);
-
+        IntPtr targetHWnd = GetWindowHandle(profileName, false); // Get handle without unregistering yet
         if (targetHWnd != IntPtr.Zero)
         {
             SendMessage(targetHWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
         }
+        // Always unregister the profile after a close attempt.
+        UnregisterProfile(profileName);
+    }
+
+    // --- Private Helper Methods ---
+
+    /// <summary>
+    /// Gets the window handle for a profile. Tries cache, then live process, then unregisters.
+    /// </summary>
+    private static IntPtr GetWindowHandle(string profileName, bool unregisterOnFailure = true)
+    {
+        if (string.IsNullOrEmpty(profileName)) return IntPtr.Zero;
+
+        // 1. Check cached handle first
+        if (_profileWindowHandles.TryGetValue(profileName, out IntPtr handle) && IsWindow(handle))
+        {
+            return handle;
+        }
+
+        // 2. If cache fails, try to find it via the tracked process
+        IntPtr foundHandle = FindAndCacheWindowHandle(profileName);
+        if (foundHandle != IntPtr.Zero)
+        {
+            return foundHandle;
+        }
+
+        // 3. If not found, the process/window is gone. Clean up.
+        if(unregisterOnFailure) UnregisterProfile(profileName);
+        return IntPtr.Zero;
+    }
+
+    /// <summary>
+    /// Finds the window handle for a tracked process and updates the cache.
+    /// </summary>
+    private static IntPtr FindAndCacheWindowHandle(string profileName)
+    {
+        if (!_profileProcesses.TryGetValue(profileName, out Process proc) || proc.HasExited) return IntPtr.Zero;
+
+        IntPtr foundHandle = IntPtr.Zero;
+
+        // Try the fast MainWIndowHandle first, with a refresh
+        proc.Refresh();
+        if (proc.MainWindowHandle != IntPtr.Zero && IsWindowVisible(proc.MainWindowHandle)) 
+        {
+            foundHandle = proc.MainWindowHandle;
+        } 
+        else // Fallback to enumerating all windows for that process ID
+        {
+             EnumWindows((hWnd, lParam) =>
+            {
+                GetWindowThreadProcessId(hWnd, out uint pid);
+                if (pid == proc.Id && IsWindowVisible(hWnd) && GetWindowTextLength(hWnd) > 0)
+                {
+                    foundHandle = hWnd;
+                    return false; // Stop searching
+                }
+                return true; // Continue
+            }, IntPtr.Zero);
+        }
+       
+        if (foundHandle != IntPtr.Zero) _profileWindowHandles[profileName] = foundHandle;
+        
+        return foundHandle;
     }
 }
