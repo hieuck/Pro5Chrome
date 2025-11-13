@@ -113,11 +113,22 @@ public class MainForm : Form
         showInTaskbarCheckBox.CheckedChanged += (s, e) => { this.ShowInTaskbar = !showInTaskbarCheckBox.Checked; };
 
         chromePathComboBox = new ComboBox { Location = new Point(10, 40), Width = 400, DropDownStyle = ComboBoxStyle.DropDown };
+        chromePathComboBox.SelectedIndexChanged += (s, e) => _profileManager.AddAndSelectChromePath(chromePathComboBox.Text);
+        chromePathComboBox.TextChanged += (s, e) => _profileManager.AddAndSelectChromePath(chromePathComboBox.Text);
         
         openUserDataButton = new Button { Text = "Mở User Data", Location = new Point(chromePathComboBox.Right + 5, 39), AutoSize = true };
         openUserDataButton.Click += (s, e) => { try { Process.Start(Pro5ChromeManager.GetUserDataPath()); } catch { } };
 
         deletePathButton = new Button { Text = "Xóa đường dẫn đã chọn", Location = new Point(openUserDataButton.Right + 5, 39), AutoSize = true };
+        deletePathButton.Click += (s, e) => {
+            if (!string.IsNullOrWhiteSpace(chromePathComboBox.Text)) {
+                 if (MessageBox.Show("Bạn có chắc muốn xóa đường dẫn này?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                 {
+                    _profileManager.DeleteChromePath(chromePathComboBox.Text);
+                    RefreshChromePathList();
+                 }
+            }
+        };
 
         topPanel.Controls.AddRange(new Control[] { openConfigButton, openProfilesJsonButton, openUrlJsonButton, alwaysOnTopCheckBox, showInTaskbarCheckBox, chromePathComboBox, openUserDataButton, deletePathButton });
 
@@ -398,6 +409,7 @@ public class MainForm : Form
 
     private void MainForm_Load(object sender, EventArgs e)
     {
+        RefreshChromePathList();
         RefreshProfileLists();
         RefreshUrlList();
     }
@@ -407,6 +419,19 @@ public class MainForm : Form
         var states = WindowManager.GetChromeWindowStates();
         currentProfileTextBox.Text = states.ActiveWindowTitle;
         closingProfileTextBox.Lines = states.InactiveWindowTitles.ToArray();
+    }
+
+    private void RefreshChromePathList()
+    {
+        var paths = _profileManager.GetChromePaths();
+        var selectedPath = _profileManager.GetSelectedChromePath();
+
+        chromePathComboBox.Items.Clear();
+        foreach (var path in paths)
+        {
+            chromePathComboBox.Items.Add(path);
+        }
+        chromePathComboBox.Text = selectedPath;
     }
 
     private void RefreshProfileLists()

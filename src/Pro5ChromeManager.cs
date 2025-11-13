@@ -6,15 +6,33 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json;
 
+/// <summary>
+/// Defines the structure for the config.json file.
+/// </summary>
+public class ChromeConfig
+{
+    [JsonProperty("selected_chrome_path")]
+    public string SelectedChromePath { get; set; }
+
+    [JsonProperty("chrome_paths")]
+    public List<string> ChromePaths { get; set; }
+
+    public ChromeConfig()
+    {
+        ChromePaths = new List<string>();
+    }
+}
+
 public class Pro5ChromeManager
 {
     // --- Constants ---
     private const string CONFIG_FILE = "config.json";
     private const string PROFILES_FILE = "profiles.json";
     public const string GoogleLoginUrl = "https://accounts.google.com/";
+    private const string DefaultChromePath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
 
     // --- Private Fields ---
-    private string _chromePath;
+    private ChromeConfig _config;
     private List<string> _profiles;
 
     // --- Constructor ---
@@ -29,14 +47,75 @@ public class Pro5ChromeManager
     {
         if (File.Exists(CONFIG_FILE))
         {
-            var configData = JsonConvert.DeserializeObject<Dictionary<string, string>>(File.ReadAllText(CONFIG_FILE));
-            _chromePath = configData.ContainsKey("chrome_path") ? configData["chrome_path"] : @"C:\Program Files\Google\Chrome\Application\chrome.exe";
+            try
+            {
+                _config = JsonConvert.DeserializeObject<ChromeConfig>(File.ReadAllText(CONFIG_FILE));
+                // Handle case where file exists but is empty or invalid
+                if (_config == null || _config.ChromePaths == null)
+                {
+                    InitializeDefaultConfig();
+                }
+                // Ensure there's always at least one path
+                if (_config.ChromePaths.Count == 0)
+                {
+                     _config.ChromePaths.Add(DefaultChromePath);
+                }
+                // Ensure a path is selected
+                if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !_config.ChromePaths.Contains(_config.SelectedChromePath))
+                {
+                    _config.SelectedChromePath = _config.ChromePaths[0];
+                }
+            }
+            catch (JsonException)
+            {
+                // If parsing fails (e.g., old format), create a new config
+                InitializeDefaultConfig();
+            }
         }
         else
         {
-            _chromePath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
-            var defaultConfig = new Dictionary<string, string> { { "chrome_path", _chromePath } };
-            File.WriteAllText(CONFIG_FILE, JsonConvert.SerializeObject(defaultConfig, Formatting.Indented));
+            InitializeDefaultConfig();
+        }
+        SaveConfig(); // Save to ensure file is created and format is updated
+    }
+
+    private void InitializeDefaultConfig()
+    {
+        _config = new ChromeConfig();
+        _config.ChromePaths.Add(DefaultChromePath);
+        _config.SelectedChromePath = DefaultChromePath;
+    }
+
+    private void SaveConfig()
+    {
+        File.WriteAllText(CONFIG_FILE, JsonConvert.SerializeObject(_config, Formatting.Indented));
+    }
+
+    public List<string> GetChromePaths() => _config.ChromePaths.ToList();
+    public string GetSelectedChromePath() => _config.SelectedChromePath;
+
+    public void AddAndSelectChromePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        if (!_config.ChromePaths.Contains(path))
+        { 
+            _config.ChromePaths.Add(path);
+        }
+        _config.SelectedChromePath = path;
+        SaveConfig();
+    }
+
+    public void DeleteChromePath(string path)
+    {
+        if (_config.ChromePaths.Contains(path))
+        {
+            _config.ChromePaths.Remove(path);
+            // If the deleted path was the selected one, select another one
+            if (_config.SelectedChromePath == path)
+            {
+                _config.SelectedChromePath = _config.ChromePaths.FirstOrDefault() ?? string.Empty;
+            }
+            SaveConfig();
         }
     }
 
@@ -100,7 +179,7 @@ public class Pro5ChromeManager
 
         ProcessStartInfo startInfo = new ProcessStartInfo
         {
-            FileName = _chromePath,
+            FileName = _config.SelectedChromePath, // Use the selected path
             Arguments = arguments
         };
         Process.Start(startInfo);
@@ -114,7 +193,7 @@ public class Pro5ChromeManager
             {
                 process.Kill();
             }
-            catch (Exception) // Now the compiler can find Exception
+            catch (Exception)
             {
                 // Ignore errors if the process has already exited
             }
