@@ -7,10 +7,13 @@ using Newtonsoft.Json;
 
 public class Pro5ChromeManager
 {
-    private string _chromePath;
+    private static string _chromePath;
     private List<string> _profiles;
     private const string CONFIG_FILE = "config.json";
     private const string PROFILES_FILE = "profiles.json";
+
+    // URL to direct users to for signing in and enabling sync
+    public const string GoogleLoginUrl = "https://accounts.google.com/signin/chrome/sync";
 
     public Pro5ChromeManager()
     {
@@ -49,7 +52,6 @@ public class Pro5ChromeManager
 
     private void SaveProfiles()
     {
-        _profiles.Sort();
         string json = JsonConvert.SerializeObject(_profiles, Formatting.Indented);
         File.WriteAllText(PROFILES_FILE, json);
     }
@@ -73,6 +75,31 @@ public class Pro5ChromeManager
     {
         if (_profiles.Contains(profileName))
         {
+            DialogResult result = MessageBox.Show(
+                $"Bạn có chắc chắn muốn xóa profile '{profileName}' không?\n\nViệc này sẽ xóa profile khỏi danh sách.\n\nBạn có muốn xóa cả thư mục dữ liệu của profile này không? (Hành động này không thể hoàn tác)", 
+                "Xác nhận Xóa Profile", 
+                MessageBoxButtons.YesNoCancel, 
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Cancel) return;
+            
+            if (result == DialogResult.Yes)
+            {
+                try
+                {
+                    string profileDir = Path.Combine(GetUserDataPath(), GetProfileDirectoryName(profileName));
+                    if (Directory.Exists(profileDir))
+                    {
+                        Directory.Delete(profileDir, true);
+                        MessageBox.Show($"Đã xóa thành công thư mục cho profile: {profileName}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Không thể xóa thư mục profile. Lỗi: {ex.Message}");
+                }
+            }
+            
             _profiles.Remove(profileName);
             SaveProfiles();
         }
@@ -88,9 +115,13 @@ public class Pro5ChromeManager
             return;
         }
 
-        AddProfile(profileName); 
+        // Only add profile to list if not just opening a URL for it
+        if (url == null) {
+            AddProfile(profileName); 
+        }
 
-        string arguments = $"--profile-directory=\"Profile {profileName}\"";
+        string profileDirName = GetProfileDirectoryName(profileName);
+        string arguments = $"--profile-directory=\"{profileDirName}\"";
         if (!string.IsNullOrEmpty(url))
         {
             arguments += $" \"{url}\"";
@@ -109,7 +140,36 @@ public class Pro5ChromeManager
         foreach (var process in Process.GetProcessesByName("chrome"))
         {
             try { process.Kill(); }
-            catch { /* Bỏ qua lỗi nếu không thể đóng tiến trình */ }
+            catch { /* Ignore errors if the process can't be killed */ }
         }
+    }
+
+    public static string GetUserDataPath()
+    {
+        string chromeDir = Path.GetDirectoryName(_chromePath);
+        if (string.IsNullOrEmpty(chromeDir)) return string.Empty;
+        return Path.GetFullPath(Path.Combine(chromeDir, "..", "User Data"));
+    }
+
+    public static string GetProfileDirectoryName(string profileName)
+    {
+        if (string.IsNullOrWhiteSpace(profileName) || profileName.Equals("Default", System.StringComparison.OrdinalIgnoreCase))
+        {
+            return "Default";
+        }
+
+        string trimmed = profileName.Trim();
+        if (trimmed.ToLower().StartsWith("profile "))
+        {
+            return "Profile" + trimmed.Substring(7).Trim();
+        }
+        
+        // If it's just a number, format it as "Profile [number]"
+        if(int.TryParse(trimmed, out _))
+        {
+             return "Profile " + trimmed;
+        }
+
+        return trimmed; 
     }
 }
