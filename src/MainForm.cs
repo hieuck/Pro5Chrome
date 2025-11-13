@@ -1,6 +1,7 @@
 
 using System;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 public class MainForm : Form
@@ -21,6 +22,7 @@ public class MainForm : Form
     private Button deleteProfileButton;
     private Button openAllProfilesButton;
     private Button closeAllChromeButton;
+    private Button arrangeWindowsButton; // New button
 
     // URL Tab Controls
     private ListBox urlsListBox;
@@ -85,8 +87,13 @@ public class MainForm : Form
 
         closeAllChromeButton = new Button() { Text = "Đóng tất cả Chrome", Location = new Point(410, 130), Size = new Size(120, 23) };
         closeAllChromeButton.Click += (s, e) => _profileManager.CloseAllChrome();
+        
+        // New Arrange Windows Button
+        arrangeWindowsButton = new Button() { Text = "Sắp xếp cửa sổ", Location = new Point(410, 170), Size = new Size(120, 23) };
+        arrangeWindowsButton.Click += (s, e) => WindowManager.ArrangeChromeWindows();
 
-        profilesTabPage.Controls.AddRange(new Control[] { profileComboBox, openProfileButton, profilesListBox, deleteProfileButton, openAllProfilesButton, closeAllChromeButton });
+
+        profilesTabPage.Controls.AddRange(new Control[] { profileComboBox, openProfileButton, profilesListBox, deleteProfileButton, openAllProfilesButton, closeAllChromeButton, arrangeWindowsButton });
         profilesTabPage.ResumeLayout();
 
         // --- URLs Tab ---
@@ -94,9 +101,11 @@ public class MainForm : Form
         newUrlTextBox = new TextBox() { Location = new Point(10, 15), Width = 300 };
         addUrlButton = new Button() { Text = "Thêm URL", Location = new Point(320, 14) };
         addUrlButton.Click += (s, e) => {
-            _urlManager.AddUrl(newUrlTextBox.Text);
-            newUrlTextBox.Clear();
-            RefreshUrlList();
+            if(!string.IsNullOrWhiteSpace(newUrlTextBox.Text)){
+                _urlManager.AddUrl(newUrlTextBox.Text);
+                newUrlTextBox.Clear();
+                RefreshUrlList();
+            }
         };
         urlsListBox = new ListBox() { Location = new Point(10, 50), Size = new Size(390, 300) };
 
@@ -152,7 +161,10 @@ public class MainForm : Form
         string currentComboBoxText = profileComboBox.Text;
         profilesListBox.Items.Clear();
         profileComboBox.Items.Clear();
-        foreach (var profile in profiles)
+        
+        var sortedProfiles = profiles.OrderBy(p => int.TryParse(p.Replace("profile ", ""), out int n) ? n : int.MaxValue).ToList();
+        
+        foreach (var profile in sortedProfiles)
         {
             profilesListBox.Items.Add(profile);
             profileComboBox.Items.Add(profile);
