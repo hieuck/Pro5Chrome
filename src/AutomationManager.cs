@@ -1,77 +1,73 @@
 
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Support.UI;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
+/// <summary>
+/// Quản lý các tác vụ tự động hóa trình duyệt bằng Selenium.
+/// </summary>
 public class AutomationManager
 {
-    private readonly Profile _profile;
-    private readonly string _chromeExecutablePath;
-    private readonly string _userDataPath;
-
-    public AutomationManager(Profile profile, string chromeExecutablePath, string userDataPath)
+    /// <summary>
+    /// Khởi tạo một AutomationManager mới.
+    /// </summary>
+    public AutomationManager()
     {
-        _profile = profile;
-        _chromeExecutablePath = chromeExecutablePath;
-        _userDataPath = userDataPath;
+        // Hàm dựng trống vì manager này hoạt động như một dịch vụ.
     }
 
-    public void RunAutoLogin()
+    /// <summary>
+    /// Khởi chạy một cửa sổ Chrome cho một profile cụ thể và điều hướng đến một URL.
+    /// Cửa sổ trình duyệt sẽ được để mở để người dùng tương tác.
+    /// </summary>
+    /// <param name="profileName">Tên thư mục của profile Chrome (ví dụ: "Profile 1", "Default").</param>
+    /// <param name="userDataPath">Đường dẫn đầy đủ đến thư mục User Data của Chrome.</param>
+    /// <param name="driverPath">Đường dẫn đến thư mục chứa chromedriver.exe.</param>
+    /// <param name="url">URL để điều hướng đến.</param>
+    /// <returns>Một Task đại diện cho hoạt động bất đồng bộ.</returns>
+    public Task NavigateToUrlAsync(string profileName, string userDataPath, string driverPath, string url)
     {
-        if (string.IsNullOrEmpty(_profile.Email) || string.IsNullOrEmpty(_profile.Password))
+        return Task.Run(() =>
         {
-            MessageBox.Show($"Email hoặc mật khẩu chưa được thiết lập cho profile '{_profile.Name}'.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
+            ChromeDriver driver = null;
+            try
+            {
+                if (string.IsNullOrEmpty(profileName) || string.IsNullOrEmpty(userDataPath))
+                {
+                    throw new ArgumentException("Tên profile và đường dẫn user data không được để trống.");
+                }
 
-        ChromeDriver driver = null;
-        try
-        {
-            var driverService = ChromeDriverService.CreateDefaultService();
-            driverService.HideCommandPromptWindow = true;
+                if (!Directory.Exists(userDataPath))
+                {
+                    throw new DirectoryNotFoundException($"Thư mục User Data không tồn tại: {userDataPath}");
+                }
+                
+                var driverService = ChromeDriverService.CreateDefaultService(driverPath);
+                driverService.HideCommandPromptWindow = true;
 
-            var options = new ChromeOptions();
-            options.BinaryLocation = _chromeExecutablePath;
-            options.AddArgument($"--user-data-dir={_userDataPath}");
-            options.AddArgument($"--profile-directory={_profile.Name}");
-            options.AddArgument("--start-maximized");
-            options.AddExcludedArgument("enable-automation"); // Giúp tránh bị một số trang web phát hiện
+                var options = new ChromeOptions();
+                options.AddArgument($"--user-data-dir={userDataPath}");
+                options.AddArgument($"--profile-directory={profileName}");
+                options.AddArgument("--start-maximized");
+                options.AddExcludedArgument("enable-automation");
+                options.AddAdditionalOption("useAutomationExtension", false);
 
-            driver = new ChromeDriver(driverService, options);
-            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(15));
+                // Khởi chạy driver. Cửa sổ sẽ được để mở.
+                driver = new ChromeDriver(driverService, options);
 
-            driver.Navigate().GoToUrl(Pro5ChromeManager.GoogleLoginUrl);
-
-            // --- Step 1: Enter Email ---
-            var emailInput = wait.Until(d => d.FindElement(By.XPath("//input[@type='email']")));
-            emailInput.SendKeys(_profile.Email);
-            driver.FindElement(By.XPath("//*[@id='identifierNext']//button")).Click();
-
-            // --- Step 2: Enter Password ---
-            var passwordInput = wait.Until(d => d.FindElement(By.XPath("//input[@type='password']")));
-            passwordInput.SendKeys(_profile.Password);
-            driver.FindElement(By.XPath("//*[@id='passwordNext']//button")).Click();
-            
-            // --- Step 3: Handle 2FA/OTP (Two-Factor Authentication) ---
-            // Future implementation: Check if an element related to 2FA appears.
-            // For now, the process will stop here, and the user can manually enter the OTP
-            // in the browser window that Selenium is controlling.
-
-            // The browser will remain open for manual intervention or further steps.
-            // We don't call driver.Quit() here so the user can continue the session.
-        }
-        catch (WebDriverTimeoutException)
-        {
-             MessageBox.Show($"Thao tác vượt quá thời gian chờ. Trang web có thể đã thay đổi hoặc tải quá chậm.\nKiểm tra lại trang đăng nhập Google và đảm bảo các phần tử (email, password) vẫn còn tồn tại.", "Lỗi Tự động hóa", MessageBoxButtons.OK, MessageBoxIcon.Error);
-             driver?.Quit();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Đã xảy ra lỗi trong quá trình tự động hóa: {ex.Message}", "Lỗi Tự động hóa", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            driver?.Quit(); // Close the browser on error
-        }
+                // Điều hướng đến URL mục tiêu.
+                driver.Navigate().GoToUrl(url);
+            }
+            catch (Exception)
+            {
+                // Nếu có lỗi, đóng trình duyệt (nếu nó đã được mở).
+                driver?.Quit();
+                // Ném lại lỗi để lớp UI có thể bắt và hiển thị cho người dùng.
+                throw;
+            }
+        });
     }
 }
