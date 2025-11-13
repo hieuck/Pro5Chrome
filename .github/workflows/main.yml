@@ -19,10 +19,10 @@ jobs:
         dotnet-version: '8.0.x'
 
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore src/Pro5ChromeManager.csproj
       
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build src/Pro5ChromeManager.csproj --configuration Release --no-restore
       
     - name: Upload artifact
       uses: actions/upload-artifact@v4
