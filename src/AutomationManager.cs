@@ -1,33 +1,70 @@
 
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
+using SeleniumExtras.WaitHelpers;
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
-/// <summary>
-/// Quản lý các tác vụ tự động hóa trình duyệt bằng Selenium.
-/// </summary>
 public class AutomationManager
 {
-    /// <summary>
-    /// Khởi tạo một AutomationManager mới.
-    /// </summary>
-    public AutomationManager()
+    public async Task LoginToGoogleAsync(string profileName, string userDataPath, string driverPath, string email, string password)
     {
-        // Hàm dựng trống vì manager này hoạt động như một dịch vụ.
-    }
+        ChromeDriver driver = null;
+        try
+        {
+            if (string.IsNullOrEmpty(profileName) || string.IsNullOrEmpty(userDataPath))
+            {
+                throw new ArgumentException("Tên profile và đường dẫn user data không được để trống.");
+            }
 
-    /// <summary>
-    /// Khởi chạy một cửa sổ Chrome cho một profile cụ thể và điều hướng đến một URL.
-    /// Cửa sổ trình duyệt sẽ được để mở để người dùng tương tác.
-    /// </summary>
-    /// <param name="profileName">Tên thư mục của profile Chrome (ví dụ: "Profile 1", "Default").</param>
-    /// <param name="userDataPath">Đường dẫn đầy đủ đến thư mục User Data của Chrome.</param>
-    /// <param name="driverPath">Đường dẫn đến thư mục chứa chromedriver.exe.</param>
-    /// <param name="url">URL để điều hướng đến.</param>
-    /// <returns>Một Task đại diện cho hoạt động bất đồng bộ.</returns>
+            if (!Directory.Exists(userDataPath))
+            {
+                throw new DirectoryNotFoundException($"Thư mục User Data không tồn tại: {userDataPath}");
+            }
+
+            var driverService = ChromeDriverService.CreateDefaultService(driverPath);
+            driverService.HideCommandPromptWindow = true;
+
+            var options = new ChromeOptions();
+            options.AddArgument($"--user-data-dir={userDataPath}");
+            options.AddArgument($"--profile-directory={profileName}");
+            options.AddArgument("--start-maximized");
+            options.AddExcludedArgument("enable-automation");
+            options.AddAdditionalOption("useAutomationExtension", false);
+
+            driver = new ChromeDriver(driverService, options);
+            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+
+            // Navigate to Google login page
+            driver.Navigate().GoToUrl("https://accounts.google.com/");
+
+            // Find and enter email
+            var emailInput = wait.Until(ExpectedConditions.ElementIsVisible(By.CssSelector("input[type='email']")));
+            emailInput.SendKeys(email);
+            emailInput.SendKeys(Keys.Enter);
+
+            // Find and enter password
+            var passwordInput = wait.Until(ExpectedConditions.ElementIsVisible(By.CssSelector("input[type='password']")));
+            await Task.Delay(1500); // Wait a bit for the UI to be ready for password
+            passwordInput.SendKeys(password);
+            passwordInput.SendKeys(Keys.Enter);
+
+            // Wait for potential 2FA or completion, but don't close the browser.
+            // The user can take over from here.
+            await Task.Delay(5000); 
+        }
+        catch (Exception ex)
+        {
+            // If an error occurs, quit the driver, but do not re-throw the exception to the UI
+            // as the user can often resolve it manually (e.g., entering a captcha).
+            driver?.Quit();
+            throw new Exception("Lỗi tự động hóa. Có thể bạn cần xác minh thủ công (ví dụ: captcha hoặc 2FA). Chi tiết: " + ex.Message);
+        }
+    }
+    
+    // The NavigateToUrlAsync method from the previous step remains unchanged.
     public Task NavigateToUrlAsync(string profileName, string userDataPath, string driverPath, string url)
     {
         return Task.Run(() =>
@@ -55,17 +92,13 @@ public class AutomationManager
                 options.AddExcludedArgument("enable-automation");
                 options.AddAdditionalOption("useAutomationExtension", false);
 
-                // Khởi chạy driver. Cửa sổ sẽ được để mở.
                 driver = new ChromeDriver(driverService, options);
 
-                // Điều hướng đến URL mục tiêu.
                 driver.Navigate().GoToUrl(url);
             }
             catch (Exception)
             {
-                // Nếu có lỗi, đóng trình duyệt (nếu nó đã được mở).
                 driver?.Quit();
-                // Ném lại lỗi để lớp UI có thể bắt và hiển thị cho người dùng.
                 throw;
             }
         });
