@@ -4,73 +4,112 @@ using System.IO;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
+using System.Threading;
 
 public class SeleniumManager
 {
     /// <summary>
     /// Attempts to log into a Google account using Selenium.
+    /// Assumes the ChromeDriver is available in the execution path or managed by a package.
     /// </summary>
     /// <param name="email">The Google account email.</param>
     /// <param name="password">The Google account password.</param>
-    /// <param name="chromeDriverPath">The absolute path to chromedriver.exe.</param>
-    /// <param name="chromeExePath">Optional. The path to the Chrome browser executable.</param>
-    public static void LoginGoogle(string email, string password, string chromeDriverPath, string chromeExePath = null)
+    public static void LoginGoogle(string email, string password)
     {
         if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
         {
-            Console.WriteLine("Email and password cannot be empty.");
-            return;
+            throw new ArgumentException("Email và mật khẩu không được để trống.");
         }
 
-        if (!File.Exists(chromeDriverPath))
-        {
-            Console.WriteLine($"ChromeDriver not found at: {chromeDriverPath}");
-            // In a real app, you might want to throw an exception here
-            return;
-        }
-        
         IWebDriver driver = null;
         try
         {
+            // The NuGet package Selenium.WebDriver.ChromeDriver will automatically place
+            // the correct chromedriver.exe in the build directory and the service will find it.
             ChromeOptions options = new ChromeOptions();
-            if (!string.IsNullOrEmpty(chromeExePath) && File.Exists(chromeExePath))
-            {
-                options.BinaryLocation = chromeExePath;
-            }
+            options.AddArgument("--disable-gpu"); // Recommended for stability
+            options.AddArgument("--start-maximized");
 
-            // The directory containing chromedriver.exe is passed to the service
-            ChromeDriverService service = ChromeDriverService.CreateDefaultService(Path.GetDirectoryName(chromeDriverPath));
-            driver = new ChromeDriver(service, options);
+            // We can now use the default service, which is much cleaner.
+            driver = new ChromeDriver(options);
 
             driver.Navigate().GoToUrl("https://accounts.google.com");
 
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(15));
+
             // Wait for the email field to be present and enter the email
-            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-            IWebElement emailField = wait.Until(d => d.FindElement(By.Id("identifierId")));
+            IWebElement emailField = wait.Until(EC.ElementIsVisible(By.Id("identifierId")));
             emailField.SendKeys(email);
             emailField.SendKeys(Keys.Enter);
 
-            // Wait for the password field to be present and enter the password
-            // Note: Google's password field might have a different identifier after the page transition
-            IWebElement passwordField = wait.Until(d => d.FindElement(By.Name("Passwd"))); // Google uses "Passwd"
+            // Wait for the password field. Google often loads this on a new page.
+            // Using a more robust locator that waits for the element to be clickable.
+            IWebElement passwordField = wait.Until(EC.ElementToBeClickable(By.Name("Passwd")));
             passwordField.SendKeys(password);
             passwordField.SendKeys(Keys.Enter);
             
-            // A simple check to see if login was likely successful
-            // Wait for a URL that indicates a successful login. This is more reliable than just sleeping.
+            // Wait for a URL that indicates a successful login. This is more reliable.
             wait.Until(d => d.Url.Contains("myaccount.google.com"));
-            Console.WriteLine("Selenium login process completed.");
-
+            Console.WriteLine("Selenium login process completed successfully.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred during Selenium login: {ex.Message}");
-            // In a real app, you would log this exception
+            // Rethrow the exception to be handled by the service layer
+            throw new Exception($"Lỗi trong quá trình tự động hóa Selenium: {ex.Message}", ex);
         }
         finally
         {
-            // Close the browser
+            // Let the browser stay open for a few seconds to observe the result, then close.
+            Thread.Sleep(5000);
             driver?.Quit();
         }
+    }
+}
+
+// Helper class for WebDriverWait until conditions
+public static class EC
+{
+    public static Func<IWebDriver, IWebElement> ElementIsVisible(By locator)
+    {
+        return driver =>
+        {
+            try
+            {
+                var element = driver.FindElement(locator);
+                return element.Displayed ? element : null;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return null;
+            }
+            catch (NoSuchElementException)
+            {
+                return null;
+            }
+        };
+    }
+    
+    public static Func<IWebDriver, IWebElement> ElementToBeClickable(By locator)
+    {
+        return driver =>
+        {
+            try
+            {
+                var element = driver.FindElement(locator);
+                if (element.Displayed && element.Enabled)
+                {
+                    return element;
+                }
+                return null;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return null;
+            }
+            catch (NoSuchElementException)
+            {
+                return null;
+            }
+        };
     }
 }

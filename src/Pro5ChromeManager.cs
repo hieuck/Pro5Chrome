@@ -137,6 +137,34 @@ public class Pro5ChromeManager
 
     #endregion
 
+    #region Automation
+
+    public void AutomateLogin(string profileName)
+    {
+        var profileDetails = GetProfileDetails(profileName);
+        if (profileDetails == null || string.IsNullOrEmpty(profileDetails.Email) || string.IsNullOrEmpty(profileDetails.Password))
+        {
+            MessageBox.Show("Vui lòng lưu email và mật khẩu cho profile này trước.", "Thiếu thông tin");
+            return;
+        }
+
+        try
+        {
+            // The SeleniumManager now handles the entire browser automation process.
+            SeleniumManager.LoginGoogle(profileDetails.Email, profileDetails.Password);
+            MessageBox.Show($"Đăng nhập thành công cho profile: {profileName}", "Thành công");
+        }
+        catch (Exception ex)
+        {
+            // Catch exceptions from SeleniumManager and display them to the user.
+            MessageBox.Show($"Đã xảy ra lỗi khi tự động đăng nhập:
+
+{ex.Message}", "Lỗi Tự động hóa", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    #endregion
+
     #region Profile Data Management (profiles.json)
 
     private void LoadProfiles()
@@ -278,10 +306,10 @@ public class Pro5ChromeManager
         }
         try
         {
-            string arguments = $"--profile-directory=\"{profileName}\" ";
+            string arguments = $"--profile-directory="{profileName}" ";
             if (!string.IsNullOrEmpty(url))
             {
-                arguments += $"\"{url}\"";
+                arguments += $""{url}"";
             }
             
             ProcessStartInfo startInfo = new ProcessStartInfo(_config.SelectedChromePath, arguments);
