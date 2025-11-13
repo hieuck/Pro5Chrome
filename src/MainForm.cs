@@ -20,6 +20,7 @@ public class MainForm : Form
     private Button saveProfileButton, addUrlButton, saveAndOpenUrlButton, openSelectedUrlButton, deleteSelectedUrlButton, openUrlWithAllProfilesButton, deleteAllUrlsButton;
     private Button arrangeButton, maximizeButton, minimizeButton, restoreButton, switchTabButton, loginGoogleListButton, openAllProfilesButton;
     private Button openChromeButton, loginGoogleButton, closeChromeButton;
+    private CheckBox alwaysOnTopCheckBox;
     private Label profileCountLabel;
 
     public MainForm()
@@ -50,8 +51,8 @@ public class MainForm : Form
         openProfilesJsonButton.Click += (s, e) => { try { Process.Start("profiles.json"); } catch { } };
         var openUrlJsonButton = new Button { Text = "Mở URL.json", AutoSize = true, Margin = controlMargin };
         openUrlJsonButton.Click += (s, e) => { try { Process.Start("URL.json"); } catch { } };
-        var alwaysOnTopCheckBox = new CheckBox { Text = "Luôn trên cùng", AutoSize = true, Margin = new Padding(15, 8, 5, 5) };
-        alwaysOnTopCheckBox.CheckedChanged += (s, e) => { this.TopMost = alwaysOnTopCheckBox.Checked; };
+        alwaysOnTopCheckBox = new CheckBox { Text = "Luôn trên cùng", AutoSize = true, Margin = new Padding(15, 8, 5, 5) };
+        alwaysOnTopCheckBox.CheckedChanged += AlwaysOnTopCheckBox_CheckedChanged;
         topFlowPanel.Controls.AddRange(new Control[] { openConfigButton, openProfilesJsonButton, openUrlJsonButton, alwaysOnTopCheckBox });
 
         var pathLabel = new Label { Text = "Đường dẫn trình duyệt:", AutoSize = true, Margin = new Padding(0, 8, 0, 0) };
@@ -248,6 +249,13 @@ public class MainForm : Form
             MessageBox.Show("Đã lưu thông tin.", "Thành công");
         }
     }
+    
+    private void AlwaysOnTopCheckBox_CheckedChanged(object sender, EventArgs e)
+    {
+        bool isChecked = alwaysOnTopCheckBox.Checked;
+        this.TopMost = isChecked;
+        _profileManager.SetAlwaysOnTop(isChecked);
+    }
 
     private void DisplayProfileDetails() {
         if (profilesListBox.SelectedItem != null) {
@@ -302,6 +310,10 @@ public class MainForm : Form
         RefreshChromePathList();
         RefreshProfileLists();
         RefreshUrlList();
+
+        bool alwaysOnTop = _profileManager.IsAlwaysOnTop();
+        this.TopMost = alwaysOnTop;
+        alwaysOnTopCheckBox.Checked = alwaysOnTop;
     }
 
     protected override void Dispose(bool disposing) {

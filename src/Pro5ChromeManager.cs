@@ -27,6 +27,7 @@ public class Pro5ChromeManager
     {
         public List<string> ChromePaths { get; set; } = new List<string>();
         public string SelectedChromePath { get; set; }
+        public bool AlwaysOnTop { get; set; } = false;
     }
 
     public Pro5ChromeManager()
@@ -69,6 +70,13 @@ public class Pro5ChromeManager
 
     public List<string> GetChromePaths() => _config.ChromePaths;
     public string GetSelectedChromePath() => _config.SelectedChromePath;
+    public bool IsAlwaysOnTop() => _config.AlwaysOnTop;
+
+    public void SetAlwaysOnTop(bool value)
+    {
+        _config.AlwaysOnTop = value;
+        SaveConfig();
+    }
 
     public void AddAndSelectChromePath(string path)
     {
