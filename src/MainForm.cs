@@ -24,9 +24,9 @@ public class MainForm : Form
     private CheckBox alwaysOnTopCheckBox, hideProfileNamesCheckBox;
     private Label profileCountLabel;
     private ContextMenuStrip profileContextMenuStrip;
-    private Timer statusUpdateTimer;
-    private StatusBar statusBar;
-    private StatusBarPanel activeTabPanel;
+    private System.Windows.Forms.Timer statusUpdateTimer;
+    private StatusStrip statusBar;
+    private ToolStripStatusLabel activeTabPanel;
 
 
     public MainForm()
@@ -218,11 +218,11 @@ public class MainForm : Form
 
     private void InitializeStatusBar()
     {
-        statusBar = new StatusBar { ShowPanels = true };
-        activeTabPanel = new StatusBarPanel { Text = "Tab đang hoạt động: N/A", AutoSize = StatusBarPanelAutoSize.Spring };
-        statusBar.Panels.Add(activeTabPanel);
+        statusBar = new StatusStrip();
+        activeTabPanel = new ToolStripStatusLabel { Text = "Tab đang hoạt động: N/A", Spring = true };
+        statusBar.Items.Add(activeTabPanel);
         this.Controls.Add(statusBar);
-        statusUpdateTimer = new Timer { Interval = 1000 };
+        statusUpdateTimer = new System.Windows.Forms.Timer { Interval = 1000 };
     }
 
     private void InitializeContextMenu() { /* Unchanged */ }
