@@ -1,4 +1,3 @@
-
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
@@ -7,14 +6,18 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>Pro5ChromeManager</RootNamespace>
     <AssemblyName>Pro5ChromeManager</AssemblyName>
+    <ImplicitUsings>enable</ImplicitUsings> <!-- Recommended for modern .NET projects -->
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- This package is potentially used for JSON operations, keeping it for safety -->
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-
-    <!-- Added to support browser automation features in AutomationManager.cs -->
+    <!-- This is the only external package needed for browser automation -->
     <PackageReference Include="Selenium.WebDriver" Version="4.21.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="**\*.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Compile>
   </ItemGroup>
 
 </Project>
