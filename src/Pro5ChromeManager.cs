@@ -122,8 +122,6 @@ public class Pro5ChromeManager
     {
         if (!string.IsNullOrEmpty(_config.SelectedChromePath) && File.Exists(_config.SelectedChromePath))
         {
-            // Typically, User Data is in the same directory as the executable (e.g., portable installs)
-            // or one level above it.
             DirectoryInfo exeDir = new DirectoryInfo(Path.GetDirectoryName(_config.SelectedChromePath));
             string potentialPath = Path.Combine(exeDir.FullName, "User Data");
             if (Directory.Exists(potentialPath)) return potentialPath;
@@ -134,7 +132,6 @@ public class Pro5ChromeManager
                 if (Directory.Exists(potentialPath)) return potentialPath;
             }
         }
-        // Fallback to the default local app data location
         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "User Data");
     }
 
@@ -152,13 +149,12 @@ public class Pro5ChromeManager
         }
         catch (JsonException)
         { 
-            // Handle case where profiles.json might be a simple string array from a previous version
             try
             {
                  string json = File.ReadAllText(ProfilesFileName);
                  var stringProfiles = JsonSerializer.Deserialize<List<string>>(json);
                  _profiles = stringProfiles.Select(name => new Profile { Name = name }).ToList();
-                 SaveProfiles(); // Resave in the new object format
+                 SaveProfiles(); 
             }
             catch (Exception ex2)
             {
@@ -233,7 +229,6 @@ public class Pro5ChromeManager
         var profileToUpdate = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
         if (profileToUpdate == null)
         {
-             // This case should ideally not happen if called from the UI, but as a safeguard:
              profileToUpdate = new Profile { Name = profileName };
             _profiles.Add(profileToUpdate);
         }
@@ -241,6 +236,34 @@ public class Pro5ChromeManager
         profileToUpdate.Password = password;
         profileToUpdate.Otp = otp;
         SaveProfiles();
+    }
+
+    public bool DeleteProfile(string profileName, bool deleteDirectory)
+    {
+        var profileToRemove = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
+        if (profileToRemove == null) return false;
+
+        _profiles.Remove(profileToRemove);
+        SaveProfiles();
+
+        if (deleteDirectory)
+        {
+            try
+            {
+                string userDataPath = GetEffectiveUserDataPath();
+                string profilePath = Path.Combine(userDataPath, profileName);
+                if (Directory.Exists(profilePath))
+                {
+                    Directory.Delete(profilePath, true); // Recursive delete
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Đã xảy ra lỗi khi xóa thư mục profile '{profileName}':\n{ex.Message}", "Lỗi Xóa Thư Mục", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Even if directory deletion fails, the profile is removed from the list, so we return true.
+            }
+        }
+        return true;
     }
 
     #endregion
@@ -264,7 +287,6 @@ public class Pro5ChromeManager
             ProcessStartInfo startInfo = new ProcessStartInfo(_config.SelectedChromePath, arguments);
             Process proc = Process.Start(startInfo);
 
-            // --- Integration with WindowManager ---
             if (proc != null)
             {
                 WindowManager.RegisterProfileProcess(profileName, proc);
@@ -273,7 +295,6 @@ public class Pro5ChromeManager
         catch (Exception ex) { MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}"); }
     }
 
-    // Calls the updated WindowManager method which now handles unregistering the profile.
     public void CloseProfileWindow(string profileName) 
     { 
         if (!string.IsNullOrWhiteSpace(profileName))

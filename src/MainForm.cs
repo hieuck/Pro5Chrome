@@ -3,6 +3,7 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 
 public class MainForm : Form
@@ -140,7 +141,7 @@ public class MainForm : Form
         urlActionsFlowPanel.Controls.AddRange(new Control[] { newUrlTextBox, addUrlButton, deleteSelectedUrlButton, deleteAllUrlsButton });
         urlActionsGroupBox.Controls.Add(urlActionsFlowPanel);
         urlTableLayout.Controls.Add(urlActionsGroupBox, 0, 1);
-        // Allow textbox to grow
+
         urlActionsFlowPanel.SetFlowBreak(newUrlTextBox, true);
         newUrlTextBox.Width = urlActionsFlowPanel.DisplayRectangle.Width - 20;
     }
@@ -151,12 +152,18 @@ public class MainForm : Form
         var openItem = profileContextMenuStrip.Items.Add("Mở Profile");
         var closeItem = profileContextMenuStrip.Items.Add("Đóng Profile");
         profileContextMenuStrip.Items.Add(new ToolStripSeparator());
+        var copyNameItem = profileContextMenuStrip.Items.Add("Sao chép tên Profile");
+        var deleteItem = profileContextMenuStrip.Items.Add("Xóa Profile...");
+        deleteItem.ForeColor = Color.Red;
+        profileContextMenuStrip.Items.Add(new ToolStripSeparator());
         var minimizeItem = profileContextMenuStrip.Items.Add("Thu nhỏ");
         var maximizeItem = profileContextMenuStrip.Items.Add("Phóng to");
         var restoreItem = profileContextMenuStrip.Items.Add("Khôi phục");
 
         openItem.Click += (s, e) => ForEachSelectedProfile(p => _profileManager.OpenChrome(p));
         closeItem.Click += (s, e) => ForEachSelectedProfile(p => _profileManager.CloseProfileWindow(p));
+        copyNameItem.Click += CopySelectedProfileNames_Click;
+        deleteItem.Click += DeleteSelectedProfiles_Click;
         minimizeItem.Click += (s, e) => ForEachSelectedProfile(p => WindowManager.PerformActionOnProfileWindow(p, WindowManager.SW_MINIMIZE));
         maximizeItem.Click += (s, e) => ForEachSelectedProfile(p => WindowManager.PerformActionOnProfileWindow(p, WindowManager.SW_MAXIMIZE));
         restoreItem.Click += (s, e) => ForEachSelectedProfile(p => WindowManager.PerformActionOnProfileWindow(p, WindowManager.SW_RESTORE));
@@ -259,6 +266,50 @@ public class MainForm : Form
             RefreshChromePathList();
         }
     }
+    private void CopySelectedProfileNames_Click(object sender, EventArgs e)
+    {
+        string[] selectedNames = GetSelectedProfileNames();
+        if (selectedNames.Length > 0)
+        {
+            Clipboard.SetText(string.Join(Environment.NewLine, selectedNames));
+        }
+    }
+
+    private void DeleteSelectedProfiles_Click(object sender, EventArgs e)
+    {
+        string[] profilesToDelete = GetSelectedProfileNames();
+        if (profilesToDelete.Length == 0) return;
+
+        string firstProfiles = string.Join(", ", profilesToDelete.Take(3));
+        if (profilesToDelete.Length > 3) firstProfiles += ", ...";
+
+        string question = profilesToDelete.Length > 1
+            ? $"Bạn có muốn xóa luôn thư mục dữ liệu của {profilesToDelete.Length} profiles đã chọn không?\n({firstProfiles})"
+            : $"Bạn có muốn xóa luôn thư mục dữ liệu của profile '{profilesToDelete[0]}' không?";
+
+        string text = $@"{question}
+
+• Yes: Xóa profile khỏi danh sách VÀ xóa thư mục dữ liệu.
+• No: Chỉ xóa profile khỏi danh sách.
+• Cancel: Hủy bỏ hành động.
+
+CẢNH BÁO: Việc xóa thư mục dữ liệu không thể hoàn tác.";
+
+        string caption = "Xác nhận Xóa Profile";
+        DialogResult result = MessageBox.Show(text, caption, MessageBoxButtons.YesNoCancel, MessageBoxIcon.Warning);
+
+        if (result == DialogResult.Cancel) return;
+
+        bool deleteDirectory = (result == DialogResult.Yes);
+
+        foreach (var profileName in profilesToDelete)
+        {
+            _profileManager.CloseProfileWindow(profileName);
+            _profileManager.DeleteProfile(profileName, deleteDirectory);
+        }
+
+        RefreshProfileList();
+    }
 
     private void ProfilesListView_SelectedIndexChanged(object sender, EventArgs e)
     {
@@ -332,9 +383,10 @@ public class MainForm : Form
     private void ForEachSelectedProfile(Action<string> action)
     {
         if (profilesListView.SelectedItems.Count == 0) return;
-        foreach (ListViewItem item in profilesListView.SelectedItems)
+        var profileNames = GetSelectedProfileNames();
+        foreach (var name in profileNames)
         {
-            if (item.Tag is string profileName) action(profileName);
+            action(name);
         }
     }
 
