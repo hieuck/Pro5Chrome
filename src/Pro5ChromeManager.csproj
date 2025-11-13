@@ -10,7 +10,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- This package is potentially used for JSON operations, keeping it for safety -->
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+
+    <!-- Added to support browser automation features in AutomationManager.cs -->
+    <PackageReference Include="Selenium.WebDriver" Version="4.21.0" />
   </ItemGroup>
 
 </Project>
