@@ -39,7 +39,7 @@ public class MainForm : Form
     {
         this.Text = "Pro5Chrome Manager by hieuck";
         this.Size = new Size(1280, 800);
-        this.MinimumSize = new Size(1024, 600);
+        this.MinimumSize = new Size(1024, 768);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.SuspendLayout();
 
@@ -69,23 +69,17 @@ public class MainForm : Form
         pathFlowPanel.Controls.AddRange(new Control[] { pathLabel, chromePathComboBox, addPathButton, deletePathButton, discoverProfilesButton });
 
         // --- NEW 3-COLUMN LAYOUT ---
-        var contentTableLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, Padding = new Padding(3) };
-        contentTableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
-        contentTableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
-        contentTableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+        var contentTableLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, Padding = new Padding(5) };
+        contentTableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F)); // A bit more for profiles
+        contentTableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
+        contentTableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
         mainTableLayout.Controls.Add(contentTableLayout, 0, 2);
 
-        // Column 1: Profiles List
         InitializeProfilesList(contentTableLayout, 0, 0);
-
-        // Column 2: Details and Window Actions
         InitializeMiddleColumn(contentTableLayout, 1, 0);
-
-        // Column 3: URL Management
         InitializeUrlManagement(contentTableLayout, 2, 0);
         
         InitializeContextMenu();
-
         this.ResumeLayout(false);
     }
 
@@ -95,41 +89,65 @@ public class MainForm : Form
         parent.Controls.Add(profilesGroupBox, column, row);
 
         profileCountLabel = new Label { Dock = DockStyle.Top, Text = "Số lượng Profiles: 0", Padding = new Padding(0, 0, 0, 5) };
-        profilesListView = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, GridLines = true, MultiSelect = true };
-        profilesListView.Columns.Add("#", 50, HorizontalAlignment.Left);
-        profilesListView.Columns.Add("Tên Profile", -2, HorizontalAlignment.Left);
+        profilesListView = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, GridLines = true, MultiSelect = true, BorderStyle = BorderStyle.None };
+        profilesListView.Columns.Add("#", 40, HorizontalAlignment.Left);
+        profilesListView.Columns.Add("Tên Profile", -2, HorizontalAlignment.Left); // -2 makes it auto-fill
         profilesGroupBox.Controls.AddRange(new Control[] { profilesListView, profileCountLabel });
     }
 
     private void InitializeMiddleColumn(TableLayoutPanel parent, int column, int row)
     {
         var middleColumnLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
-        middleColumnLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Details
-        middleColumnLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 70)); // Window Actions
+        middleColumnLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 75F)); // Details
+        middleColumnLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 25F)); // Window Actions
         parent.Controls.Add(middleColumnLayout, column, row);
 
-        // Top part of middle column: Details & Automation
+        // Top part: Details & Automation
         var profileDetailsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Chi tiết & Tự động hóa", Padding = new Padding(10) };
         middleColumnLayout.Controls.Add(profileDetailsGroupBox, 0, 0);
         
-        emailTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Location = new Point(100, 27) };
-        passwordTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Location = new Point(100, 57), UseSystemPasswordChar = true };
-        otpTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Location = new Point(100, 87) };
-        saveProfileButton = new Button { Text = "Lưu Thông Tin", AutoSize = true, Location = new Point(98, 125), Anchor = AnchorStyles.Top | AnchorStyles.Left };
-        loginGoogleButton = new Button { Text = "Tự động Đăng nhập Google", AutoSize = true, Height = 30, Padding = new Padding(5), Location = new Point(15, 170), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
-        profileDetailsGroupBox.Controls.AddRange(new Control[] { new Label { Text = "Email:", Location = new Point(15, 30), AutoSize = true }, emailTextBox, new Label { Text = "Password:", Location = new Point(15, 60), AutoSize = true }, passwordTextBox, new Label { Text = "OTP Secret:", Location = new Point(15, 90), AutoSize = true }, otpTextBox, saveProfileButton, loginGoogleButton });
+        var detailsLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
+        detailsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        detailsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        profileDetailsGroupBox.Controls.Add(detailsLayout);
 
-        // Bottom part of middle column: Window Management
-        var windowActionsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Quản lý Cửa sổ", Padding = new Padding(10) };
+        emailTextBox = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(5) };
+        passwordTextBox = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(5), UseSystemPasswordChar = true };
+        otpTextBox = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(5), UseSystemPasswordChar = true };
+        saveProfileButton = new Button { Text = "Lưu Thông Tin", Anchor = AnchorStyles.None, AutoSize = true, Margin = new Padding(5) };
+        loginGoogleButton = new Button { Text = "Tự động Đăng nhập Google", Dock = DockStyle.Fill, Height = 40, Margin = new Padding(5) };
+
+        detailsLayout.Controls.Add(new Label { Text = "Email:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3) }, 0, 0);
+        detailsLayout.Controls.Add(emailTextBox, 1, 0);
+        detailsLayout.Controls.Add(new Label { Text = "Password:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3) }, 0, 1);
+        detailsLayout.Controls.Add(passwordTextBox, 1, 1);
+        detailsLayout.Controls.Add(new Label { Text = "OTP Secret:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3) }, 0, 2);
+        detailsLayout.Controls.Add(otpTextBox, 1, 2);
+        
+        detailsLayout.Controls.Add(saveProfileButton, 1, 3);
+        detailsLayout.SetColumnSpan(loginGoogleButton, 2);
+        detailsLayout.Controls.Add(loginGoogleButton, 0, 4);
+
+        // Bottom part: Window Management
+        var windowActionsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Quản lý Cửa sổ", Padding = new Padding(8) };
         middleColumnLayout.Controls.Add(windowActionsGroupBox, 0, 1);
 
-        var windowActionsFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = true };
-        minimizeSelectedButton = new Button { Text = "Thu nhỏ", AutoSize = true, Margin = new Padding(5) };
-        maximizeSelectedButton = new Button { Text = "Phóng to", AutoSize = true, Margin = new Padding(5) };
-        restoreSelectedButton = new Button { Text = "Khôi phục", AutoSize = true, Margin = new Padding(5) };
-        closeSelectedButton = new Button { Text = "Đóng", AutoSize = true, Margin = new Padding(5), ForeColor = Color.Red };
-        windowActionsFlowPanel.Controls.AddRange(new Control[] { minimizeSelectedButton, maximizeSelectedButton, restoreSelectedButton, closeSelectedButton });
-        windowActionsGroupBox.Controls.Add(windowActionsFlowPanel);
+        var windowActionsLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, RowCount = 2 };
+        windowActionsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+        windowActionsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+        windowActionsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+        windowActionsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+        windowActionsGroupBox.Controls.Add(windowActionsLayout);
+
+        minimizeSelectedButton = new Button { Text = "Thu nhỏ", Dock = DockStyle.Fill, Margin = new Padding(3) };
+        maximizeSelectedButton = new Button { Text = "Phóng to", Dock = DockStyle.Fill, Margin = new Padding(3) };
+        restoreSelectedButton = new Button { Text = "Khôi phục", Dock = DockStyle.Fill, Margin = new Padding(3) };
+        closeSelectedButton = new Button { Text = "Đóng", Dock = DockStyle.Fill, Margin = new Padding(3), ForeColor = Color.Red };
+        
+        windowActionsLayout.Controls.Add(minimizeSelectedButton, 0, 0);
+        windowActionsLayout.Controls.Add(maximizeSelectedButton, 1, 0);
+        windowActionsLayout.Controls.Add(restoreSelectedButton, 0, 1);
+        windowActionsLayout.Controls.Add(closeSelectedButton, 1, 1);
     }
 
     private void InitializeUrlManagement(TableLayoutPanel parent, int column, int row)
@@ -137,27 +155,40 @@ public class MainForm : Form
         var urlGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Quản lý URL", Padding = new Padding(10) };
         parent.Controls.Add(urlGroupBox, column, row);
         
-        var urlTableLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
-        urlTableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        urlTableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
-        urlGroupBox.Controls.Add(urlTableLayout);
+        var urlMainLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
+        urlMainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 75F));
+        urlMainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
+        urlGroupBox.Controls.Add(urlMainLayout);
 
-        urlsListBox = new ListBox { Dock = DockStyle.Fill };
-        urlTableLayout.Controls.Add(urlsListBox, 0, 0);
+        urlsListBox = new ListBox { Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, IntegralHeight = false };
+        var listWrapper = new Panel { Dock = DockStyle.Fill, Padding = new Padding(1), BorderStyle = BorderStyle.FixedSingle };
+        listWrapper.Controls.Add(urlsListBox);
+        urlMainLayout.Controls.Add(listWrapper, 0, 0);
+        
+        var urlActionsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Hành động", Padding = new Padding(8) };
+        urlMainLayout.Controls.Add(urlActionsGroupBox, 0, 1);
 
-        var urlActionsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Hành động", Padding = new Padding(10) };
-        var urlActionsFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Padding = new Padding(0)};
-        newUrlTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(5) };
-        addUrlButton = new Button { Text = "Thêm", AutoSize = true, Margin = new Padding(5) };
-        deleteSelectedUrlButton = new Button { Text = "Xóa", AutoSize = true, Margin = new Padding(5) };
-        deleteAllUrlsButton = new Button { Text = "Xóa hết", AutoSize = true, Margin = new Padding(5), ForeColor = Color.Red };
-        urlActionsFlowPanel.Controls.AddRange(new Control[] { newUrlTextBox, addUrlButton, deleteSelectedUrlButton, deleteAllUrlsButton });
-        urlActionsGroupBox.Controls.Add(urlActionsFlowPanel);
-        urlTableLayout.Controls.Add(urlActionsGroupBox, 0, 1);
-
-        urlActionsFlowPanel.SetFlowBreak(newUrlTextBox, true);
-        newUrlTextBox.Width = urlActionsFlowPanel.DisplayRectangle.Width - 20;
+        var urlActionsLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3 };
+        urlActionsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+        urlActionsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+        urlActionsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33F));
+        urlActionsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+        urlActionsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+        urlActionsGroupBox.Controls.Add(urlActionsLayout);
+        
+        newUrlTextBox = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(3) };
+        addUrlButton = new Button { Text = "Thêm", Dock = DockStyle.Fill, Margin = new Padding(3) };
+        deleteSelectedUrlButton = new Button { Text = "Xóa", Dock = DockStyle.Fill, Margin = new Padding(3) };
+        deleteAllUrlsButton = new Button { Text = "Xóa hết", Dock = DockStyle.Fill, Margin = new Padding(3), ForeColor = Color.Red };
+        
+        urlActionsLayout.SetColumnSpan(newUrlTextBox, 3);
+        urlActionsLayout.Controls.Add(newUrlTextBox, 0, 0);
+        urlActionsLayout.Controls.Add(addUrlButton, 0, 1);
+        urlActionsLayout.Controls.Add(deleteSelectedUrlButton, 1, 1);
+        urlActionsLayout.Controls.Add(deleteAllUrlsButton, 2, 1);
     }
+    
+    // ... (The rest of the file remains largely unchanged) ...
 
     private void InitializeContextMenu()
     {
@@ -244,7 +275,7 @@ public class MainForm : Form
         {
             var profileName = profiles[i];
             var item = new ListViewItem((i + 1).ToString());
-            item.Tag = profileName; // Store the real name in the Tag property
+            item.Tag = profileName;
             item.SubItems.Add(hideNames ? "******" : profileName);
             profilesListView.Items.Add(item);
             if (selectedProfileNames.Contains(profileName)) item.Selected = true;
