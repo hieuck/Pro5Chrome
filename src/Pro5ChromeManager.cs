@@ -113,25 +113,28 @@ public class Pro5ChromeManager
         try
         {
             string json = File.ReadAllText(ProfilesFileName);
+            if (string.IsNullOrWhiteSpace(json)) 
+            {
+                 _profiles = new List<Profile>();
+                 return;
+            }
             // Handle old format (List<string>)
             if (json.Trim().StartsWith("[") && json.Contains("\""))
             {
                 try
                 {
                     var stringProfiles = JsonSerializer.Deserialize<List<string>>(json);
-                    _profiles = stringProfiles.Select(name => new Profile { Name = name }).ToList();
-                    SaveProfiles(); // Resave in new format
+                    if (stringProfiles != null && stringProfiles.All(s => !s.Contains("{"))) // Basic check for old format
+                    {
+                        _profiles = stringProfiles.Select(name => new Profile { Name = name }).ToList();
+                        SaveProfiles(); // Resave in new format
+                        return;
+                    }
                 }
-                catch
-                {
-                     // It might be the new format after all, so try that.
-                     _profiles = JsonSerializer.Deserialize<List<Profile>>(json) ?? new List<Profile>();
-                }
+                catch {}
             }
-            else
-            {
-                 _profiles = JsonSerializer.Deserialize<List<Profile>>(json) ?? new List<Profile>();
-            }
+            // Deserialize new format
+            _profiles = JsonSerializer.Deserialize<List<Profile>>(json) ?? new List<Profile>();
         }
         catch (Exception ex)
         {
@@ -172,6 +175,53 @@ public class Pro5ChromeManager
         SaveProfiles();
     }
 
+    public int DiscoverAndAddProfiles()
+    {
+        string userDataPath = GetUserDataPath();
+        if (!Directory.Exists(userDataPath))
+        {
+            MessageBox.Show($"Thư mục User Data mặc định không tồn tại tại:\n{userDataPath}\n\nVui lòng đảm bảo Chrome đã được cài đặt đúng cách.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return 0;
+        }
+
+        var existingProfileNames = new HashSet<string>(this.GetProfiles(), StringComparer.OrdinalIgnoreCase);
+        int newProfilesCount = 0;
+
+        try
+        {
+            var directories = Directory.GetDirectories(userDataPath);
+            foreach (var dir in directories)
+            {
+                string profileFolderName = new DirectoryInfo(dir).Name;
+                // Valid profile folders are "Default" or "Profile X"
+                if (profileFolderName.Equals("Default", StringComparison.OrdinalIgnoreCase) || 
+                    (profileFolderName.StartsWith("Profile ", StringComparison.OrdinalIgnoreCase) && int.TryParse(profileFolderName.Substring(8), out _)))
+                {
+                    if (!existingProfileNames.Contains(profileFolderName))
+                    {
+                         // Use the internal list for instant update before saving
+                        if (!_profiles.Any(p => p.Name.Equals(profileFolderName, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            _profiles.Add(new Profile { Name = profileFolderName });
+                            newProfilesCount++;
+                        }
+                    }
+                }
+            }
+
+            if (newProfilesCount > 0)
+            {
+                SaveProfiles(); // Save all new profiles at once
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Lỗi khi quét thư mục profile: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        
+        return newProfilesCount;
+    }
+
     public void DeleteProfile(string profileName)
     {
         var profileToRemove = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
@@ -187,7 +237,6 @@ public class Pro5ChromeManager
         var profileToUpdate = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
         if (profileToUpdate == null)
         {
-             // If profile doesn't exist, create it.
              profileToUpdate = new Profile { Name = profileName };
             _profiles.Add(profileToUpdate);
         }
@@ -203,7 +252,7 @@ public class Pro5ChromeManager
     {
         if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath))
         {
-            MessageBox.Show("Vui lòng chọn đường dẫn đến file chrome.exe hợp lệ trong file config.json.");
+            MessageBox.Show("Vui lòng chọn đường dẫn đến file chrome.exe hợp lệ.", "Lỗi đường dẫn Chrome");
             return;
         }
 
