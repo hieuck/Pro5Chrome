@@ -12,6 +12,7 @@ public class Profile
     public string Name { get; set; }
     public string Email { get; set; }
     public string Password { get; set; }
+    public string Otp { get; set; }
 }
 
 public class Pro5ChromeManager
@@ -220,7 +221,7 @@ public class Pro5ChromeManager
         }
     }
 
-    public void UpdateProfileDetails(string profileName, string email, string password)
+    public void UpdateProfileDetails(string profileName, string email, string password, string otp)
     {
         var profileToUpdate = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
         if (profileToUpdate == null)
@@ -230,6 +231,7 @@ public class Pro5ChromeManager
         }
         profileToUpdate.Email = email;
         profileToUpdate.Password = password;
+        profileToUpdate.Otp = otp;
         SaveProfiles();
     }
 

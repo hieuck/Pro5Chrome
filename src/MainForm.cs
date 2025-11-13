@@ -16,7 +16,7 @@ public class MainForm : Form
     // UI Controls
     private ComboBox chromePathComboBox, profileComboBox;
     private ListBox profilesListBox, urlsListBox;
-    private TextBox emailTextBox, passwordTextBox, newUrlTextBox, currentProfileTextBox, closingProfileTextBox;
+    private TextBox emailTextBox, passwordTextBox, otpTextBox, newUrlTextBox, currentProfileTextBox, closingProfileTextBox;
     private Button saveProfileButton, addUrlButton, saveAndOpenUrlButton, openSelectedUrlButton, deleteSelectedUrlButton, openUrlWithAllProfilesButton, deleteAllUrlsButton;
     private Button arrangeButton, maximizeButton, minimizeButton, restoreButton, switchTabButton, loginGoogleListButton, openAllProfilesButton;
     private Button openChromeButton, loginGoogleButton, closeChromeButton;
@@ -76,13 +76,15 @@ public class MainForm : Form
         mainPanel.Controls.AddRange(new Control[] { leftPanel, rightPanel });
 
         // --- LEFT COLUMN ---
-        var profileDetailsGroupBox = new GroupBox { Dock = DockStyle.Bottom, Text = "Thông tin Profile", Height = 120, Padding = new Padding(10) };
+        var profileDetailsGroupBox = new GroupBox { Dock = DockStyle.Bottom, Text = "Thông tin Profile", Height = 150, Padding = new Padding(10) };
         var emailLabel = new Label { Text = "Email:", Location = new Point(15, 30), AutoSize = true };
         emailTextBox = new TextBox { Location = new Point(90, 27), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = leftPanel.ClientSize.Width - 110 };
         var passwordLabel = new Label { Text = "Password:", Location = new Point(15, 60), AutoSize = true };
-        passwordTextBox = new TextBox { Location = new Point(90, 57), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = emailTextBox.Width - 85, UseSystemPasswordChar = true };
-        saveProfileButton = new Button { Text = "Lưu", Location = new Point(passwordTextBox.Right + 10, 56), Anchor = AnchorStyles.Top | AnchorStyles.Right, AutoSize = true, Enabled = false };
-        profileDetailsGroupBox.Controls.AddRange(new Control[] { emailLabel, emailTextBox, passwordLabel, passwordTextBox, saveProfileButton });
+        passwordTextBox = new TextBox { Location = new Point(90, 57), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = emailTextBox.Width, UseSystemPasswordChar = true };
+        var otpLabel = new Label { Text = "OTP Secret:", Location = new Point(15, 90), AutoSize = true };
+        otpTextBox = new TextBox { Location = new Point(90, 87), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = emailTextBox.Width };
+        saveProfileButton = new Button { Text = "Lưu Thông Tin", Location = new Point(88, 115), Anchor = AnchorStyles.Top | AnchorStyles.Left, AutoSize = true, Enabled = false };
+        profileDetailsGroupBox.Controls.AddRange(new Control[] { emailLabel, emailTextBox, passwordLabel, passwordTextBox, otpLabel, otpTextBox, saveProfileButton });
         
         var profilesGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Danh sách Profiles", Padding = new Padding(10) };
         profileCountLabel = new Label { Dock = DockStyle.Top, Text = "Số lượng Profiles: 0", Padding = new Padding(0,0,0,5) };
@@ -116,8 +118,8 @@ public class MainForm : Form
         var urlFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
         var newUrlPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true };
         newUrlTextBox = new TextBox { Width = 380, Margin = new Padding(0,0,5,0) };
-        addUrlButton = new Button { Text = "Thêm", AutoSize = true, Margin = new Padding(0,0,5,0) };
-        saveAndOpenUrlButton = new Button { Text = "Mở & Lưu", AutoSize = true };
+        addUrlButton = new Button { Text = "Thêm", AutoSize = true, Margin = new Padding(0, 0, 5, 0) };
+        saveAndOpenUrlButton = new Button { Text = "Mở & Lưu", AutoSize = true, Margin = new Padding(0,0,5,0) };
         newUrlPanel.Controls.AddRange(new Control[] { newUrlTextBox, addUrlButton, saveAndOpenUrlButton });
         var urlButtonsPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = true, AutoSize = true };
         openSelectedUrlButton = new Button { Text = "Mở URL (với Profile Nhanh)", AutoSize = true, Margin = controlMargin };
@@ -245,7 +247,7 @@ public class MainForm : Form
 
     private void SaveProfileButton_Click(object sender, EventArgs e) {
         if (profilesListBox.SelectedItem != null) {
-            _profileManager.UpdateProfileDetails(profilesListBox.SelectedItem.ToString(), emailTextBox.Text, passwordTextBox.Text);
+            _profileManager.UpdateProfileDetails(profilesListBox.SelectedItem.ToString(), emailTextBox.Text, passwordTextBox.Text, otpTextBox.Text);
             MessageBox.Show("Đã lưu thông tin.", "Thành công");
         }
     }
@@ -262,11 +264,19 @@ public class MainForm : Form
             var profile = _profileManager.GetProfileDetails(profilesListBox.SelectedItem.ToString());
             emailTextBox.Text = profile?.Email ?? "";
             passwordTextBox.Text = profile?.Password ?? "";
+            otpTextBox.Text = profile?.Otp ?? "";
             saveProfileButton.Enabled = true;
+            emailTextBox.Enabled = true;
+            passwordTextBox.Enabled = true;
+            otpTextBox.Enabled = true;
         } else {
             emailTextBox.Clear();
             passwordTextBox.Clear();
+            otpTextBox.Clear();
             saveProfileButton.Enabled = false;
+            emailTextBox.Enabled = false;
+            passwordTextBox.Enabled = false;
+            otpTextBox.Enabled = false;
         }
     }
 
@@ -314,6 +324,8 @@ public class MainForm : Form
         bool alwaysOnTop = _profileManager.IsAlwaysOnTop();
         this.TopMost = alwaysOnTop;
         alwaysOnTopCheckBox.Checked = alwaysOnTop;
+
+        DisplayProfileDetails(); // Initial state for profile details
     }
 
     protected override void Dispose(bool disposing) {
