@@ -4,20 +4,14 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Pro5ChromeManager</RootNamespace>
     <AssemblyName>Pro5ChromeManager</AssemblyName>
-    <ImplicitUsings>enable</ImplicitUsings> <!-- Recommended for modern .NET projects -->
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- This is the only external package needed for browser automation -->
+    <!-- Package for browser automation -->
     <PackageReference Include="Selenium.WebDriver" Version="4.21.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="**\*.cs">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Compile>
   </ItemGroup>
 
 </Project>
