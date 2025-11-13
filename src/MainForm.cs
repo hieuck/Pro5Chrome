@@ -459,7 +459,7 @@ CẢNH BÁO: Việc xóa thư mục dữ liệu không thể hoàn tác.";
         loginGoogleButton.Enabled = isProfileSelected;
         btnWarmUp.Enabled = isProfileSelected; // Added this line
         minimizeSelectedButton.Enabled = isProfileSelected;
-        maximizeSelectedButton.Enabled = isProfileSelected;
+        maximizeSelectedButton.Enabled = isProfileSelected; // CORRECTED THIS LINE
         restoreSelectedButton.Enabled = isProfileSelected;
         closeSelectedButton.Enabled = isProfileSelected;
     }
