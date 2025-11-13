@@ -54,6 +54,10 @@ public class Pro5ChromeManager
                 _config = new Config();
             }
         }
+        else
+        {
+            SaveConfig();
+        }
     }
 
     private void SaveConfig()
@@ -79,16 +83,43 @@ public class Pro5ChromeManager
         SaveConfig();
     }
 
-    public void AddAndSelectChromePath(string path)
+    public bool AddAndSelectChromePath(string path)
     {
-        if (string.IsNullOrWhiteSpace(path)) return;
-        if (!path.StartsWith("\\") && !File.Exists(path)) return;
-        if (!_config.ChromePaths.Contains(path))
+        if (string.IsNullOrWhiteSpace(path)) return false;
+
+        string executablePath = path;
+
+        if (Directory.Exists(path))
         {
-            _config.ChromePaths.Add(path);
+            string potentialChrome = Path.Combine(path, "chrome.exe");
+            string potentialCent = Path.Combine(path, "centbrowser.exe");
+            if (File.Exists(potentialChrome))
+            {
+                executablePath = potentialChrome;
+            }
+            else if (File.Exists(potentialCent))
+            {
+                executablePath = potentialCent;
+            }
+            else
+            {
+                return false;
+            }
         }
-        _config.SelectedChromePath = path;
+        else if (!File.Exists(executablePath) || !executablePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        executablePath = Path.GetFullPath(executablePath);
+
+        if (!_config.ChromePaths.Contains(executablePath))
+        {
+            _config.ChromePaths.Add(executablePath);
+        }
+        _config.SelectedChromePath = executablePath;
         SaveConfig();
+        return true;
     }
 
     public void DeleteChromePath(string path)
@@ -104,7 +135,6 @@ public class Pro5ChromeManager
         }
     }
 
-    // --- User Data Path Logic ---
     public string GetEffectiveUserDataPath()
     {
         if (!string.IsNullOrEmpty(_config.SelectedChromePath) && File.Exists(_config.SelectedChromePath))
@@ -245,29 +275,34 @@ public class Pro5ChromeManager
         }
         try
         {
-            Process.Start(_config.SelectedChromePath, $"--profile-directory={profileName} \"{url}\"");
+            string arguments = $"--profile-directory=\"{profileName}\" ";
+            if (!string.IsNullOrEmpty(url))
+            {
+                arguments += $"\"{url}\"";
+            }
+            Process.Start(_config.SelectedChromePath, arguments);
         }
         catch (Exception ex) { MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}"); }
     }
 
     public void CloseProfileWindow(string profileName) 
     { 
-        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.CloseWindowByProfileName(profileName, _config.SelectedChromePath); 
+        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.CloseWindowByProfileName(profileName, GetProfiles(), _config.SelectedChromePath); 
     }
 
     public void MaximizeProfileWindow(string profileName) 
     { 
-        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.MaximizeWindowByProfileName(profileName, _config.SelectedChromePath); 
+        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.MaximizeWindowByProfileName(profileName, GetProfiles(), _config.SelectedChromePath); 
     }
 
     public void MinimizeProfileWindow(string profileName) 
     { 
-        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.MinimizeWindowByProfileName(profileName, _config.SelectedChromePath); 
+        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.MinimizeWindowByProfileName(profileName, GetProfiles(), _config.SelectedChromePath); 
     }
 
     public void RestoreProfileWindow(string profileName) 
     { 
-        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.RestoreWindowByProfileName(profileName, _config.SelectedChromePath); 
+        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.RestoreWindowByProfileName(profileName, GetProfiles(), _config.SelectedChromePath); 
     }
 
     public void CloseAllChrome()

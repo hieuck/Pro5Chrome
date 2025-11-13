@@ -49,7 +49,6 @@ public static class WindowManager
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
-    // Window state constants
     private const uint SWP_NOZORDER = 0x0004;
     private const int SW_MAXIMIZE = 3;
     private const int SW_MINIMIZE = 6;
@@ -57,8 +56,6 @@ public static class WindowManager
     private const uint WM_CLOSE = 0x0010;
 
     #endregion
-
-    private static int _nextWindowIndex = 0;
 
     private static List<IntPtr> GetBrowserWindowHandles(string browserExecutablePath)
     {
@@ -87,11 +84,30 @@ public static class WindowManager
         return browserWindows;
     }
 
-    private static void ModifyWindowStateByProfile(string profileName, string browserExecutablePath, int command)
+    private static IntPtr FindWindowForProfile(string profileName, List<string> allProfileNames, List<IntPtr> allBrowserWindows)
     {
-        var browserWindows = GetBrowserWindowHandles(browserExecutablePath);
-        string searchString1 = $" - {profileName} - "; 
-        string searchString2 = $"{profileName} - "; 
+        if (profileName.Equals("Default", StringComparison.OrdinalIgnoreCase))
+        {
+            var identifiedWindows = new HashSet<IntPtr>();
+            // First, identify all windows that belong to a NAMED profile
+            foreach (var name in allProfileNames.Where(p => !p.Equals("Default", StringComparison.OrdinalIgnoreCase)))
+            {
+                 var foundHandle = FindWindowForNamedProfile(name, allBrowserWindows);
+                 if(foundHandle != IntPtr.Zero) identifiedWindows.Add(foundHandle);
+            }
+            // The "Default" window is the one that is left over
+            return allBrowserWindows.FirstOrDefault(h => !identifiedWindows.Contains(h));
+        }
+        else
+        {
+            return FindWindowForNamedProfile(profileName, allBrowserWindows);
+        }
+    }
+
+    private static IntPtr FindWindowForNamedProfile(string profileName, List<IntPtr> browserWindows)
+    {
+        string searchString1 = $" - {profileName} - ";
+        string searchString2 = $"{profileName} - ";
 
         foreach (var hWnd in browserWindows)
         {
@@ -105,25 +121,33 @@ public static class WindowManager
             bool titleMatches = windowTitle.IndexOf(searchString1, StringComparison.OrdinalIgnoreCase) >= 0 ||
                                 windowTitle.StartsWith(searchString2, StringComparison.OrdinalIgnoreCase);
 
-            if (titleMatches)
-            {
-                if(command == WM_CLOSE)
-                {
-                    SendMessage(hWnd, (uint)command, IntPtr.Zero, IntPtr.Zero);
-                }
-                else
-                {
-                    ShowWindow(hWnd, command);
-                }
-                break; 
-            }
+            if (titleMatches) return hWnd;
+        }
+        return IntPtr.Zero;
+    }
+
+    private static void ModifyWindowStateByProfile(string profileName, List<string> allProfileNames, string browserExecutablePath, int command)
+    {
+        var allBrowserWindows = GetBrowserWindowHandles(browserExecutablePath);
+        IntPtr targetHWnd = FindWindowForProfile(profileName, allProfileNames, allBrowserWindows);
+
+        if (targetHWnd != IntPtr.Zero)
+        {
+             if(command == WM_CLOSE)
+             {
+                SendMessage(targetHWnd, (uint)command, IntPtr.Zero, IntPtr.Zero);
+             }
+             else
+             {
+                ShowWindow(targetHWnd, command);
+             }
         }
     }
 
-    public static void CloseWindowByProfileName(string profileName, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, browserExecutablePath, (int)WM_CLOSE);
-    public static void MaximizeWindowByProfileName(string profileName, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, browserExecutablePath, SW_MAXIMIZE);
-    public static void MinimizeWindowByProfileName(string profileName, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, browserExecutablePath, SW_MINIMIZE);
-    public static void RestoreWindowByProfileName(string profileName, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, browserExecutablePath, SW_RESTORE);
+    public static void CloseWindowByProfileName(string profileName, List<string> allProfileNames, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, allProfileNames, browserExecutablePath, (int)WM_CLOSE);
+    public static void MaximizeWindowByProfileName(string profileName, List<string> allProfileNames, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, allProfileNames, browserExecutablePath, SW_MAXIMIZE);
+    public static void MinimizeWindowByProfileName(string profileName, List<string> allProfileNames, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, allProfileNames, browserExecutablePath, SW_MINIMIZE);
+    public static void RestoreWindowByProfileName(string profileName, List<string> allProfileNames, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, allProfileNames, browserExecutablePath, SW_RESTORE);
 
 
     public static (string ActiveWindowTitle, List<string> InactiveWindowTitles) GetChromeWindowStates(string browserExecutablePath)
@@ -157,17 +181,16 @@ public static class WindowManager
     public static void CycleToNextChromeWindow(string browserExecutablePath)
     {
         var chromeWindows = GetBrowserWindowHandles(browserExecutablePath);
-        if (chromeWindows.Count == 0) return;
+        if (chromeWindows.Count < 2) return;
 
-        if (_nextWindowIndex >= chromeWindows.Count)
-        {
-            _nextWindowIndex = 0;
-        }
+        IntPtr foregroundWindow = GetForegroundWindow();
+        int currentIndex = chromeWindows.IndexOf(foregroundWindow);
 
-        IntPtr hWnd = chromeWindows[_nextWindowIndex];
-        ShowWindow(hWnd, SW_RESTORE);
-        SetForegroundWindow(hWnd);
-        _nextWindowIndex++;
+        int nextIndex = (currentIndex != -1 && currentIndex < chromeWindows.Count - 1) ? currentIndex + 1 : 0;
+        
+        IntPtr nextHWnd = chromeWindows[nextIndex];
+        ShowWindow(nextHWnd, SW_RESTORE);
+        SetForegroundWindow(nextHWnd);
     }
 
     public static void ArrangeChromeWindows(int cols, int gap, string browserExecutablePath)

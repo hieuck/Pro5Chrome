@@ -1,11 +1,13 @@
 
+using System;
 using System.Collections.Generic;
 using System.IO;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Windows.Forms;
 
 public class UrlManager
 {
-    private List<string> _urls;
+    private List<string> _urls = new List<string>();
     private const string URL_FILE = "URL.json";
 
     public UrlManager()
@@ -17,25 +19,52 @@ public class UrlManager
     {
         if (File.Exists(URL_FILE))
         {
-            string json = File.ReadAllText(URL_FILE);
-            _urls = JsonConvert.DeserializeObject<List<string>>(json) ?? new List<string>();
+            try
+            {
+                string json = File.ReadAllText(URL_FILE);
+                // Handle case where the file is empty or just has whitespace
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    _urls = new List<string>();
+                    return;
+                }
+                _urls = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+            }
+            catch (JsonException ex)
+            {
+                MessageBox.Show($"Tệp 'URL.json' có định dạng không hợp lệ và sẽ được tạo lại.\nLỗi: {ex.Message}", "Lỗi Phân tích JSON", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                _urls = new List<string>();
+                SaveUrls(); // Create a new valid, empty file
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Đã xảy ra lỗi khi đọc tệp 'URL.json'.\nLỗi: {ex.Message}", "Lỗi Đọc File", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                _urls = new List<string>();
+            }
         }
         else
         {
             _urls = new List<string>();
-            File.WriteAllText(URL_FILE, "[]"); // Create the file if it doesn't exist
+            SaveUrls(); // Create the file if it doesn't exist
         }
     }
 
     private void SaveUrls()
     {
-        string json = JsonConvert.SerializeObject(_urls, Formatting.Indented);
-        File.WriteAllText(URL_FILE, json);
+        try
+        {
+            string json = JsonSerializer.Serialize(_urls, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            File.WriteAllText(URL_FILE, json);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Đã xảy ra lỗi khi lưu tệp 'URL.json'.\nLỗi: {ex.Message}", "Lỗi Ghi File", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     public List<string> GetUrls()
     {
-        LoadUrls();
+        // No need to load urls again, they are loaded in the constructor.
         return _urls;
     }
 

@@ -30,6 +30,30 @@ public class MainForm : Form
         InitializeComponent();
         this.Load += MainForm_Load;
     }
+    
+    private void SafeOpenFile(string fileName)
+    {
+        try
+        {
+            // Ensure the file exists before trying to open it.
+            if (!File.Exists(fileName))
+            {
+                // Create a default empty file if it doesn't exist.
+                 if (fileName.EndsWith(".json")) {
+                    File.WriteAllText(fileName, "[]"); // Create an empty JSON array for profiles/urls or object for config
+                     if(fileName.Contains("config")) File.WriteAllText(fileName, "{}");
+                 } else {
+                    File.Create(fileName).Close(); 
+                 }
+            }
+            // UseShellExecute needs to be true to use the default system application.
+            Process.Start(new ProcessStartInfo(fileName) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        { 
+            MessageBox.Show($"Không thể mở file '{fileName}'.\nHãy chắc chắn rằng bạn có một ứng dụng mặc định để mở loại file này.\nLỗi chi tiết: {ex.Message}", "Lỗi Mở File", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
 
     private void InitializeComponent()
     {
@@ -46,11 +70,11 @@ public class MainForm : Form
         var quickActionFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 40, Padding = new Padding(5), FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
 
         var openConfigButton = new Button { Text = "Mở config.json", AutoSize = true, Margin = controlMargin };
-        openConfigButton.Click += (s, e) => { try { Process.Start("config.json"); } catch { } };
+        openConfigButton.Click += (s, e) => SafeOpenFile("config.json");
         var openProfilesJsonButton = new Button { Text = "Mở profiles.json", AutoSize = true, Margin = controlMargin };
-        openProfilesJsonButton.Click += (s, e) => { try { Process.Start("profiles.json"); } catch { } };
+        openProfilesJsonButton.Click += (s, e) => SafeOpenFile("profiles.json");
         var openUrlJsonButton = new Button { Text = "Mở URL.json", AutoSize = true, Margin = controlMargin };
-        openUrlJsonButton.Click += (s, e) => { try { Process.Start("URL.json"); } catch { } };
+        openUrlJsonButton.Click += (s, e) => SafeOpenFile("URL.json");
         alwaysOnTopCheckBox = new CheckBox { Text = "Luôn trên cùng", AutoSize = true, Margin = new Padding(15, 8, 5, 5) };
         alwaysOnTopCheckBox.CheckedChanged += AlwaysOnTopCheckBox_CheckedChanged;
         topFlowPanel.Controls.AddRange(new Control[] { openConfigButton, openProfilesJsonButton, openUrlJsonButton, alwaysOnTopCheckBox });
@@ -116,9 +140,9 @@ public class MainForm : Form
         
         var urlActionsGroupBox = new GroupBox { Dock = DockStyle.Bottom, Text = "Hành động với URL", Height = 120, Padding = new Padding(10) };
         var urlFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false };
-        var newUrlPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true };
+        var newUrlPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = new Padding(0,0,0,5) };
         newUrlTextBox = new TextBox { Width = 380, Margin = new Padding(0,0,5,0) };
-        addUrlButton = new Button { Text = "Thêm", AutoSize = true, Margin = new Padding(0, 0, 5, 0) };
+        addUrlButton = new Button { Text = "Thêm", AutoSize = true, Margin = new Padding(0,0,5,0) };
         saveAndOpenUrlButton = new Button { Text = "Mở & Lưu", AutoSize = true, Margin = new Padding(0,0,5,0) };
         newUrlPanel.Controls.AddRange(new Control[] { newUrlTextBox, addUrlButton, saveAndOpenUrlButton });
         var urlButtonsPanel = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = true, AutoSize = true };
@@ -139,8 +163,8 @@ public class MainForm : Form
         this.Controls.AddRange(new Control[] { mainPanel, quickActionFlowPanel, pathFlowPanel, topFlowPanel });
 
         // --- Event Handlers ---
-        chromePathComboBox.TextChanged += (s, e) => _profileManager.AddAndSelectChromePath(chromePathComboBox.Text);
-        openUserDataButton.Click += (s, e) => { try { Process.Start(_profileManager.GetEffectiveUserDataPath()); } catch (Exception ex) { MessageBox.Show($"Không thể mở thư mục User Data. Lỗi: {ex.Message}");} };
+        chromePathComboBox.Leave += ChromePathComboBox_Leave;
+        openUserDataButton.Click += (s, e) => { try { Process.Start(new ProcessStartInfo(_profileManager.GetEffectiveUserDataPath()) { UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show($"Không thể mở thư mục User Data. Lỗi: {ex.Message}");} };
         deletePathButton.Click += (s, e) => { if (!string.IsNullOrWhiteSpace(chromePathComboBox.Text) && MessageBox.Show("Bạn có chắc muốn xóa đường dẫn này?", "Xác nhận", MessageBoxButtons.YesNo) == DialogResult.Yes) { _profileManager.DeleteChromePath(chromePathComboBox.Text); RefreshChromePathList(); } };
         discoverProfilesButton.Click += DiscoverProfilesButton_Click;
         profileComboBox.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) openChromeButton.PerformClick(); };
@@ -212,12 +236,18 @@ public class MainForm : Form
     }
     
     // --- Methods ---
+    private void ChromePathComboBox_Leave(object sender, EventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(chromePathComboBox.Text) && !_profileManager.AddAndSelectChromePath(chromePathComboBox.Text))
+        {
+            MessageBox.Show("Đường dẫn không hợp lệ. Vui lòng cung cấp đường dẫn đến thư mục chứa file thực thi trình duyệt (ví dụ: chrome.exe, centbrowser.exe) hoặc đến chính file đó.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        RefreshChromePathList(); 
+    }
+
     private void DiscoverProfilesButton_Click(object sender, EventArgs e) {
-        if (!string.IsNullOrWhiteSpace(chromePathComboBox.Text) && File.Exists(chromePathComboBox.Text)) {
-             _profileManager.AddAndSelectChromePath(chromePathComboBox.Text);
-             RefreshChromePathList();
-        } else {
-            MessageBox.Show("Đường dẫn trình duyệt không hợp lệ.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        if (string.IsNullOrWhiteSpace(_profileManager.GetSelectedChromePath())) {
+            MessageBox.Show("Vui lòng nhập và lưu một đường dẫn trình duyệt hợp lệ trước.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
         int newCount = _profileManager.DiscoverAndAddProfiles();
@@ -291,7 +321,9 @@ public class MainForm : Form
         var selectedPath = _profileManager.GetSelectedChromePath();
         string currentText = chromePathComboBox.Text;
         chromePathComboBox.Items.Clear();
-        chromePathComboBox.Items.AddRange(paths.ToArray());
+        if (paths.Any()) {
+            chromePathComboBox.Items.AddRange(paths.ToArray());
+        }
         chromePathComboBox.Text = selectedPath ?? currentText;
     }
 
