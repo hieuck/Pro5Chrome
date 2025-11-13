@@ -1,11 +1,7 @@
 
 name: .NET Core CI
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+on: [push]
 
 jobs:
   build:
@@ -15,17 +11,21 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Setup .NET
+    - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: '3.1.x' # Targeting .NET Framework, but setting up a .NET Core SDK environment for build tools
+        dotnet-version: '6.0.x'
 
     - name: Restore dependencies
       run: dotnet restore
+      working-directory: ./src
 
     - name: Build
       run: dotnet build --configuration Release --no-restore
+      working-directory: ./src
 
-    # The testing step is commented out as we don't have a test project yet.
-    # - name: Test
-    #   run: dotnet test --no-build --verbosity normal
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: Pro5Chrome
+        path: src/bin/Release/net6.0-windows/
