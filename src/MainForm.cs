@@ -12,7 +12,7 @@ public class MainForm : Form
     private Pro5ChromeManager _profileManager;
     private UrlManager _urlManager;
     private AutomationManager _automationManager; // Added for automation tasks
-    private Timer statusUpdateTimer;
+    private System.Windows.Forms.Timer statusUpdateTimer;
 
     // --- UI Controls ---
     // ... (existing controls)
