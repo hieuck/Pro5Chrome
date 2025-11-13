@@ -222,24 +222,28 @@ public class Pro5ChromeManager
 
     public void OpenChrome(string profileName, string url = null)
     {
-        if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath)) { 
-            MessageBox.Show("Vui lòng chọn một đường dẫn trình duyệt hợp lệ."); 
-            return; 
+        if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath))
+        {
+            MessageBox.Show("Vui lòng chọn một đường dẫn trình duyệt hợp lệ.");
+            return;
         }
         try
         {
-            string arguments = $"--profile-directory="{profileName}" ";
-            if (!string.IsNullOrEmpty(url)) { 
-                arguments += $""{url}""; 
+            string arguments = $"--profile-directory=\"{profileName}\"";
+            if (!string.IsNullOrEmpty(url))
+            {
+                arguments += $" \"{url}\"";
             }
             ProcessStartInfo startInfo = new ProcessStartInfo(_config.SelectedChromePath, arguments);
             Process proc = Process.Start(startInfo);
-            if (proc != null) { 
-                WindowManager.RegisterProfileProcess(profileName, proc); 
+            if (proc != null)
+            {
+                WindowManager.RegisterProfileProcess(profileName, proc);
             }
         }
-        catch (Exception ex) { 
-            MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}"); 
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}");
         }
     }
 
