@@ -3,31 +3,16 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
-/// <summary>
-/// A simple class to hold the titles of active and inactive Chrome windows.
-/// </summary>
-public class ChromeWindowStates
-{
-    public string ActiveWindowTitle { get; set; }
-    public List<string> InactiveWindowTitles { get; set; }
-
-    public ChromeWindowStates()
-    {
-        ActiveWindowTitle = string.Empty;
-        InactiveWindowTitles = new List<string>();
-    }
-}
-
 public static class WindowManager
 {
     #region P/Invoke Signatures
 
-    // Delegate and P/Invoke signatures for interacting with the Windows API
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     [DllImport("user32.dll")]
@@ -60,52 +45,95 @@ public static class WindowManager
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetForegroundWindow(IntPtr hWnd);
+    
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
-    // Flags for SetWindowPos
+    // Window state constants
     private const uint SWP_NOZORDER = 0x0004;
-
-    // Constants for ShowWindow
     private const int SW_MAXIMIZE = 3;
     private const int SW_MINIMIZE = 6;
-    private const int SW_RESTORE = 9; // Also known as SW_NORMAL
+    private const int SW_RESTORE = 9;
+    private const uint WM_CLOSE = 0x0010;
 
     #endregion
 
     private static int _nextWindowIndex = 0;
 
-    private static List<IntPtr> GetChromeWindowHandles()
+    private static List<IntPtr> GetBrowserWindowHandles(string browserExecutablePath)
     {
-        var chromeProcessIds = Process.GetProcessesByName("chrome").Select(p => (uint)p.Id).ToHashSet();
-        var chromeWindows = new List<IntPtr>();
+        string processName = "chrome"; // Default fallback
+        if (!string.IsNullOrEmpty(browserExecutablePath) && File.Exists(browserExecutablePath))
+        {
+            processName = Path.GetFileNameWithoutExtension(browserExecutablePath);
+        }
 
-        if (chromeProcessIds.Count > 0)
+        var browserProcessIds = Process.GetProcessesByName(processName).Select(p => (uint)p.Id).ToHashSet();
+        var browserWindows = new List<IntPtr>();
+
+        if (browserProcessIds.Count > 0)
         {
             EnumWindows((hWnd, lParam) =>
             {
                 GetWindowThreadProcessId(hWnd, out uint pid);
-                if (chromeProcessIds.Contains(pid) && IsWindowVisible(hWnd) && GetWindowTextLength(hWnd) > 0)
+                if (browserProcessIds.Contains(pid) && IsWindowVisible(hWnd) && GetWindowTextLength(hWnd) > 0)
                 {
-                    StringBuilder title = new StringBuilder(256);
-                    GetWindowText(hWnd, title, title.Capacity);
-                    if (!string.IsNullOrWhiteSpace(title.ToString()) && title.ToString().Contains(" - Google Chrome"))
-                    {
-                        chromeWindows.Add(hWnd);
-                    }
+                    browserWindows.Add(hWnd);
                 }
                 return true; // Continue enumeration
             }, IntPtr.Zero);
         }
 
-        return chromeWindows;
+        return browserWindows;
     }
 
-    public static ChromeWindowStates GetChromeWindowStates()
+    private static void ModifyWindowStateByProfile(string profileName, string browserExecutablePath, int command)
     {
-        var states = new ChromeWindowStates();
-        var allChromeHandles = GetChromeWindowHandles();
+        var browserWindows = GetBrowserWindowHandles(browserExecutablePath);
+        string searchString1 = $" - {profileName} - "; 
+        string searchString2 = $"{profileName} - "; 
+
+        foreach (var hWnd in browserWindows)
+        {
+            int length = GetWindowTextLength(hWnd);
+            if (length == 0) continue;
+
+            StringBuilder titleBuilder = new StringBuilder(length + 1);
+            GetWindowText(hWnd, titleBuilder, titleBuilder.Capacity);
+            string windowTitle = titleBuilder.ToString();
+
+            bool titleMatches = windowTitle.IndexOf(searchString1, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                windowTitle.StartsWith(searchString2, StringComparison.OrdinalIgnoreCase);
+
+            if (titleMatches)
+            {
+                if(command == WM_CLOSE)
+                {
+                    SendMessage(hWnd, (uint)command, IntPtr.Zero, IntPtr.Zero);
+                }
+                else
+                {
+                    ShowWindow(hWnd, command);
+                }
+                break; 
+            }
+        }
+    }
+
+    public static void CloseWindowByProfileName(string profileName, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, browserExecutablePath, (int)WM_CLOSE);
+    public static void MaximizeWindowByProfileName(string profileName, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, browserExecutablePath, SW_MAXIMIZE);
+    public static void MinimizeWindowByProfileName(string profileName, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, browserExecutablePath, SW_MINIMIZE);
+    public static void RestoreWindowByProfileName(string profileName, string browserExecutablePath) => ModifyWindowStateByProfile(profileName, browserExecutablePath, SW_RESTORE);
+
+
+    public static (string ActiveWindowTitle, List<string> InactiveWindowTitles) GetChromeWindowStates(string browserExecutablePath)
+    {
+        var activeTitle = string.Empty;
+        var inactiveTitles = new List<string>();
+        var allBrowserHandles = GetBrowserWindowHandles(browserExecutablePath);
         IntPtr foregroundWindowHandle = GetForegroundWindow();
 
-        foreach (var hWnd in allChromeHandles)
+        foreach (var hWnd in allBrowserHandles)
         {
             int length = GetWindowTextLength(hWnd);
             if (length == 0) continue;
@@ -116,45 +144,38 @@ public static class WindowManager
 
             if (hWnd == foregroundWindowHandle)
             {
-                states.ActiveWindowTitle = windowTitle;
+                activeTitle = windowTitle;
             }
             else
             {
-                states.InactiveWindowTitles.Add(windowTitle);
+                inactiveTitles.Add(windowTitle);
             }
         }
-        return states;
+        return (activeTitle, inactiveTitles);
     }
 
-    public static void CycleToNextChromeWindow()
+    public static void CycleToNextChromeWindow(string browserExecutablePath)
     {
-        var chromeWindows = GetChromeWindowHandles();
+        var chromeWindows = GetBrowserWindowHandles(browserExecutablePath);
         if (chromeWindows.Count == 0) return;
 
-        // Reset index if it goes out of bounds
         if (_nextWindowIndex >= chromeWindows.Count)
         {
             _nextWindowIndex = 0;
         }
 
         IntPtr hWnd = chromeWindows[_nextWindowIndex];
-
-        // Restore the window if it's minimized before activating
         ShowWindow(hWnd, SW_RESTORE);
-        
-        // Bring the window to the foreground
         SetForegroundWindow(hWnd);
-
-        // Increment index for the next button press
         _nextWindowIndex++;
     }
 
-    public static void ArrangeChromeWindows(int cols, int gap)
+    public static void ArrangeChromeWindows(int cols, int gap, string browserExecutablePath)
     {
-        var chromeWindows = GetChromeWindowHandles();
+        var chromeWindows = GetBrowserWindowHandles(browserExecutablePath);
         if (chromeWindows.Count == 0 || cols <= 0) return;
 
-        RestoreAllWindows();
+        PerformGlobalAction(browserExecutablePath, SW_RESTORE);
 
         Rectangle screen = Screen.PrimaryScreen.WorkingArea;
         int rows = (int)Math.Ceiling((double)chromeWindows.Count / cols);
@@ -174,30 +195,12 @@ public static class WindowManager
         }
     }
 
-    public static void MaximizeAllWindows()
+    public static void PerformGlobalAction(string browserExecutablePath, int command)
     {
-        var chromeWindows = GetChromeWindowHandles();
+        var chromeWindows = GetBrowserWindowHandles(browserExecutablePath);
         foreach (var hWnd in chromeWindows)
         {
-            ShowWindow(hWnd, SW_MAXIMIZE);
-        }
-    }
-
-    public static void MinimizeAllWindows()
-    {
-        var chromeWindows = GetChromeWindowHandles();
-        foreach (var hWnd in chromeWindows)
-        {
-            ShowWindow(hWnd, SW_MINIMIZE);
-        }
-    }
-
-    public static void RestoreAllWindows()
-    {
-        var chromeWindows = GetChromeWindowHandles();
-        foreach (var hWnd in chromeWindows)
-        {
-            ShowWindow(hWnd, SW_RESTORE);
+            ShowWindow(hWnd, command);
         }
     }
 }

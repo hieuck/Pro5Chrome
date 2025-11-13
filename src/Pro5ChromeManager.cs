@@ -7,7 +7,6 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows.Forms;
 
-// Defines the structure for a profile, holding its name, email, and password.
 public class Profile
 {
     public string Name { get; set; }
@@ -73,7 +72,8 @@ public class Pro5ChromeManager
 
     public void AddAndSelectChromePath(string path)
     {
-        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        if (string.IsNullOrWhiteSpace(path)) return;
+        if (!path.StartsWith("\\") && !File.Exists(path)) return;
         if (!_config.ChromePaths.Contains(path))
         {
             _config.ChromePaths.Add(path);
@@ -94,51 +94,55 @@ public class Pro5ChromeManager
             SaveConfig();
         }
     }
-    
-    public static string GetUserDataPath()
+
+    // --- User Data Path Logic ---
+    public string GetEffectiveUserDataPath()
     {
+        if (!string.IsNullOrEmpty(_config.SelectedChromePath) && File.Exists(_config.SelectedChromePath))
+        {
+            DirectoryInfo exeDir = new DirectoryInfo(Path.GetDirectoryName(_config.SelectedChromePath));
+            string potentialPath1 = Path.Combine(exeDir.FullName, "User Data");
+            if (Directory.Exists(potentialPath1)) return potentialPath1;
+
+            if (exeDir.Parent != null)
+            {
+                string potentialPath2 = Path.Combine(exeDir.Parent.FullName, "User Data");
+                if (Directory.Exists(potentialPath2)) return potentialPath2;
+            }
+        }
         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "User Data");
     }
+
 
     // --- Profile Data Management ---
 
     private void LoadProfiles()
     {
-        if (!File.Exists(ProfilesFileName))
-        {
-            _profiles = new List<Profile>();
-            return;
-        }
-
+        if (!File.Exists(ProfilesFileName)) { _profiles = new List<Profile>(); return; }
         try
         {
             string json = File.ReadAllText(ProfilesFileName);
-            if (string.IsNullOrWhiteSpace(json)) 
-            {
-                 _profiles = new List<Profile>();
-                 return;
-            }
-            // Handle old format (List<string>)
+            if (string.IsNullOrWhiteSpace(json)) { _profiles = new List<Profile>(); return; }
+
             if (json.Trim().StartsWith("[") && json.Contains("\""))
             {
                 try
                 {
                     var stringProfiles = JsonSerializer.Deserialize<List<string>>(json);
-                    if (stringProfiles != null && stringProfiles.All(s => !s.Contains("{"))) // Basic check for old format
+                    if (stringProfiles != null && !stringProfiles.Any(s => s.Contains("{")))
                     {
                         _profiles = stringProfiles.Select(name => new Profile { Name = name }).ToList();
-                        SaveProfiles(); // Resave in new format
+                        SaveProfiles();
                         return;
                     }
                 }
-                catch {}
+                catch { }
             }
-            // Deserialize new format
             _profiles = JsonSerializer.Deserialize<List<Profile>>(json) ?? new List<Profile>();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Lỗi khi đọc file profiles.json: {ex.Message}");
+            MessageBox.Show($"Lỗi khi đọc file profiles.json: {ex.Message}", "Lỗi đọc file");
             _profiles = new List<Profile>();
         }
     }
@@ -147,85 +151,61 @@ public class Pro5ChromeManager
     {
         try
         {
-            string json = JsonSerializer.Serialize(_profiles, new JsonSerializerOptions { WriteIndented = true });
+            string json = JsonSerializer.Serialize(_profiles, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
             File.WriteAllText(ProfilesFileName, json);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Lỗi khi lưu file profiles.json: {ex.Message}");
+            MessageBox.Show($"Lỗi khi lưu file profiles.json: {ex.Message}", "Lỗi ghi file");
         }
     }
 
-    public List<string> GetProfiles()
-    {
-        return _profiles.Select(p => p.Name).ToList();
-    }
+    public List<string> GetProfiles() => _profiles.Select(p => p.Name).ToList();
 
-    public Profile GetProfileDetails(string profileName)
-    {
-        return _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
-    }
+    public Profile GetProfileDetails(string profileName) => _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
 
     public void AddProfile(string profileName)
     {
-        if (string.IsNullOrWhiteSpace(profileName) || _profiles.Any(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase)))
-            return;
-
+        if (string.IsNullOrWhiteSpace(profileName) || _profiles.Any(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase))) return;
         _profiles.Add(new Profile { Name = profileName });
         SaveProfiles();
     }
 
     public int DiscoverAndAddProfiles()
     {
-        string userDataPath = GetUserDataPath();
-        if (!Directory.Exists(userDataPath))
-        {
-            MessageBox.Show($"Thư mục User Data mặc định không tồn tại tại:\n{userDataPath}\n\nVui lòng đảm bảo Chrome đã được cài đặt đúng cách.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        string userDataPath = GetEffectiveUserDataPath();
+        if (!Directory.Exists(userDataPath)){
+            MessageBox.Show($"Không tìm thấy thư mục User Data tại: {userDataPath}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return 0;
         }
 
-        var existingProfileNames = new HashSet<string>(this.GetProfiles(), StringComparer.OrdinalIgnoreCase);
         int newProfilesCount = 0;
-
         try
         {
-            var directories = Directory.GetDirectories(userDataPath);
+            var existingProfileNames = new HashSet<string>(this.GetProfiles(), StringComparer.OrdinalIgnoreCase);
+            var directories = Directory.GetDirectories(userDataPath, "Profile *", SearchOption.TopDirectoryOnly)
+                                     .Concat(Directory.GetDirectories(userDataPath, "Default", SearchOption.TopDirectoryOnly));
+
             foreach (var dir in directories)
             {
                 string profileFolderName = new DirectoryInfo(dir).Name;
-                // Valid profile folders are "Default" or "Profile X"
-                if (profileFolderName.Equals("Default", StringComparison.OrdinalIgnoreCase) || 
-                    (profileFolderName.StartsWith("Profile ", StringComparison.OrdinalIgnoreCase) && int.TryParse(profileFolderName.Substring(8), out _)))
+                if (!existingProfileNames.Contains(profileFolderName))
                 {
-                    if (!existingProfileNames.Contains(profileFolderName))
-                    {
-                         // Use the internal list for instant update before saving
-                        if (!_profiles.Any(p => p.Name.Equals(profileFolderName, StringComparison.OrdinalIgnoreCase)))
-                        {
-                            _profiles.Add(new Profile { Name = profileFolderName });
-                            newProfilesCount++;
-                        }
-                    }
+                    _profiles.Add(new Profile { Name = profileFolderName });
+                    newProfilesCount++;
                 }
             }
 
-            if (newProfilesCount > 0)
-            {
-                SaveProfiles(); // Save all new profiles at once
-            }
+            if (newProfilesCount > 0) SaveProfiles();
         }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Lỗi khi quét thư mục profile: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        
+        catch (Exception ex) { MessageBox.Show($"Lỗi khi quét thư mục profile: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
         return newProfilesCount;
     }
 
     public void DeleteProfile(string profileName)
     {
         var profileToRemove = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
-        if (profileToRemove != null)
+        if (profileToRemove != null && MessageBox.Show($"Bạn có chắc chắn muốn xóa profile '{profileName}'?", "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
         {
             _profiles.Remove(profileToRemove);
             SaveProfiles();
@@ -240,47 +220,61 @@ public class Pro5ChromeManager
              profileToUpdate = new Profile { Name = profileName };
             _profiles.Add(profileToUpdate);
         }
-
         profileToUpdate.Email = email;
         profileToUpdate.Password = password;
         SaveProfiles();
     }
 
-    // --- Chrome Process Management ---
+    // --- Browser Process & Window Management ---
 
     public void OpenChrome(string profileName, string url = null)
     {
-        if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath))
-        {
-            MessageBox.Show("Vui lòng chọn đường dẫn đến file chrome.exe hợp lệ.", "Lỗi đường dẫn Chrome");
+        if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath)){
+            MessageBox.Show("Đường dẫn đến file thực thi của trình duyệt không hợp lệ.", "Lỗi đường dẫn");
             return;
         }
-
-        string arguments = $"--profile-directory={profileName}";
-        if (!string.IsNullOrEmpty(url))
-        {
-            arguments += $" \"{url}\"";
-        }
-
         try
         {
-            Process.Start(_config.SelectedChromePath, arguments);
+            Process.Start(_config.SelectedChromePath, $"--profile-directory={profileName} \"{url}\"");
         }
-        catch (Exception ex)
-        { 
-            MessageBox.Show($"Không thể mở Chrome: {ex.Message}");
-        }
+        catch (Exception ex) { MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}"); }
+    }
+
+    public void CloseProfileWindow(string profileName) 
+    { 
+        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.CloseWindowByProfileName(profileName, _config.SelectedChromePath); 
+    }
+
+    public void MaximizeProfileWindow(string profileName) 
+    { 
+        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.MaximizeWindowByProfileName(profileName, _config.SelectedChromePath); 
+    }
+
+    public void MinimizeProfileWindow(string profileName) 
+    { 
+        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.MinimizeWindowByProfileName(profileName, _config.SelectedChromePath); 
+    }
+
+    public void RestoreProfileWindow(string profileName) 
+    { 
+        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.RestoreWindowByProfileName(profileName, _config.SelectedChromePath); 
     }
 
     public void CloseAllChrome()
     {
-        foreach (var process in Process.GetProcessesByName("chrome"))
+        try
         {
-            try
+            string processName = "chrome";
+            if (!string.IsNullOrEmpty(_config.SelectedChromePath) && File.Exists(_config.SelectedChromePath))
+            {
+                processName = Path.GetFileNameWithoutExtension(_config.SelectedChromePath);
+            }
+
+            foreach (var process in Process.GetProcessesByName(processName))
             {
                 if (!process.HasExited) process.Kill();
             }
-            catch { }
         }
+        catch (Exception ex) { MessageBox.Show($"Lỗi khi đóng trình duyệt: {ex.Message}"); }
     }
 }
