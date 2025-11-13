@@ -40,7 +40,6 @@ public class Pro5ChromeManager
 
     #region Configuration Management
 
-    // ... (All methods in this region are unchanged)
     private void LoadConfig()
     {
         try
@@ -89,6 +88,7 @@ public class Pro5ChromeManager
 
     #region Automation
 
+    // MODIFIED: Corrected the method call to include userDataPath and profileName
     public void AutomateLogin(string profileName)
     {
         var profileDetails = GetProfileDetails(profileName);
@@ -100,7 +100,8 @@ public class Pro5ChromeManager
 
         try
         {
-            SeleniumManager.LoginGoogle(profileDetails.Email, profileDetails.Password, profileDetails.Otp);
+            string userDataPath = GetEffectiveUserDataPath();
+            SeleniumManager.LoginGoogle(userDataPath, profileName, profileDetails.Email, profileDetails.Password, profileDetails.Otp);
         }
         catch (Exception ex)
         {
@@ -108,7 +109,7 @@ public class Pro5ChromeManager
         }
     }
 
-    // NEW: Starts the account warming process.
+    // MODIFIED: Corrected the order of arguments in the method call
     public void WarmUpAccount(string profileName)
     {
         if (string.IsNullOrEmpty(profileName))
@@ -120,8 +121,8 @@ public class Pro5ChromeManager
         try
         {
             string userDataPath = GetEffectiveUserDataPath();
-            // Run in a background thread to keep the UI responsive.
-            Task.Run(() => SeleniumManager.WarmUpAccount(profileName, userDataPath));
+            // The original call had the arguments swapped. This is the correct order.
+            SeleniumManager.WarmUpAccount(userDataPath, profileName);
         }
         catch (Exception ex)
         {
@@ -133,7 +134,6 @@ public class Pro5ChromeManager
 
     #region Profile Data Management
 
-    // ... (All methods in this region are unchanged)
     private void LoadProfiles()
     {
         if (!File.Exists(ProfilesFileName)) { _profiles = new List<Profile>(); return; }
@@ -223,7 +223,6 @@ public class Pro5ChromeManager
 
     #region Browser Process & Window Management
 
-    // ... (All methods in this region are unchanged)
     public void OpenChrome(string profileName, string url = null)
     {
         if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath)) { MessageBox.Show("Vui lòng chọn một đường dẫn trình duyệt hợp lệ."); return; }
