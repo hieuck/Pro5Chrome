@@ -15,13 +15,12 @@ public static class SeleniumManager
 
     #region Login & Appeal
 
-    public static void LoginGoogle(string email, string password, string otpSecret)
+    public static void LoginGoogle(string userDataPath, string profileName, string email, string password, string otpSecret)
     {
         IWebDriver driver = null;
         try
         {
-            // Uses a fresh driver session for login
-            driver = new ChromeDriver(new ChromeOptions());
+            driver = InitializeDriverWithProfile(profileName, userDataPath);
             driver.Navigate().GoToUrl("https://accounts.google.com/");
 
             EnterEmail(driver, email);
@@ -125,7 +124,7 @@ public static class SeleniumManager
     #region NEW: Account Warming
 
     // Main method to start the account warming process.
-    public static void WarmUpAccount(string profileName, string userDataPath)
+    public static void WarmUpAccount(string userDataPath, string profileName)
     {
         IWebDriver driver = null;
         try
@@ -217,7 +216,7 @@ public static class SeleniumManager
             
             var searchBox = driver.FindElement(By.Name("search_query"));
             searchBox.SendKeys("lofi hip hop radio"); // A safe, long-running search term.
-            searchBox.SendKeys(Keys.Enter);
+            searchBox.SendKeys(OpenQA.Selenium.Keys.Enter);
 
             Thread.Sleep(TimeSpan.FromSeconds(_random.Next(5, 10)));
 
