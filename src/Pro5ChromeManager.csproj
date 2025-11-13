@@ -1,26 +1,28 @@
 
-      <Project Sdk="Microsoft.NET.Sdk">
-      
-        <PropertyGroup>
-          <OutputType>WinExe</OutputType>
-          <TargetFramework>net8.0-windows</TargetFramework>
-          <UseWindowsForms>true</UseWindowsForms>
-          <ImplicitUsings>enable</ImplicitUsings>
-          <RootNamespace>Pro5ChromeManager</RootNamespace>
-          <AssemblyName>Pro5ChromeManager</AssemblyName>
-        </PropertyGroup>
-      
-        <ItemGroup>
-          <!-- Main Selenium package -->
-          <PackageReference Include="Selenium.WebDriver" Version="4.21.0" />
-      
-          <!-- Provides WebDriverWait and other support classes -->
-          <PackageReference Include="Selenium.Support" Version="4.21.0" />
-      
-          <!-- This is the key: Automatically manages chromedriver.exe -->
-          <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="126.0.6478.6100" />
-      
-        </ItemGroup>
-      
-      </Project>
-      
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Pro5ChromeManager</RootNamespace>
+    <AssemblyName>Pro5ChromeManager</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Main Selenium package -->
+    <PackageReference Include="Selenium.WebDriver" Version="4.21.0" />
+
+    <!-- Provides WebDriverWait and other support classes -->
+    <PackageReference Include="Selenium.Support" Version="4.21.0" />
+
+    <!-- This is the key: Automatically manages chromedriver.exe -->
+    <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="126.0.6478.6100" />
+
+    <!-- NEW: Library for generating Time-based One-Time Passwords (TOTP) -->
+    <PackageReference Include="Otp.NET" Version="1.4.0" />
+
+  </ItemGroup>
+
+</Project>
