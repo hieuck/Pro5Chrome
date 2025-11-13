@@ -47,16 +47,39 @@ public class Pro5ChromeManager
             {
                 string json = File.ReadAllText(ConfigFileName);
                 _config = JsonSerializer.Deserialize<Config>(json) ?? new Config();
+
+                // --- Self-healing logic for Chrome Paths ---
+                int originalCount = _config.ChromePaths.Count;
+                
+                // Filter out any paths that are null, empty, or don't point to a real file.
+                _config.ChromePaths = _config.ChromePaths
+                                           .Where(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p))
+                                           .ToList();
+
+                bool needsSave = originalCount != _config.ChromePaths.Count;
+
+                // If the currently selected path is no longer valid, select the first valid one or null.
+                if (!_config.ChromePaths.Contains(_config.SelectedChromePath))
+                {
+                    _config.SelectedChromePath = _config.ChromePaths.FirstOrDefault();
+                    needsSave = true;
+                }
+                
+                // If any invalid paths were removed or the selection changed, save the cleaned config.
+                if (needsSave)
+                {
+                    SaveConfig();
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Lỗi khi đọc file config.json: {ex.Message}");
+                MessageBox.Show($"Lỗi khi đọc hoặc làm sạch file config.json: {ex.Message}");
                 _config = new Config();
             }
         }
         else
         {
-            SaveConfig();
+            SaveConfig(); // Create a new config file if it doesn't exist
         }
     }
 
@@ -283,6 +306,19 @@ public class Pro5ChromeManager
             Process.Start(_config.SelectedChromePath, arguments);
         }
         catch (Exception ex) { MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}"); }
+    }
+
+    public void PerformAutoLogin(string profileName)
+    {
+        var profile = GetProfileDetails(profileName);
+        if (profile == null)
+        {
+            MessageBox.Show($"Không tìm thấy profile '{profileName}'.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            return;
+        }
+
+        var automationManager = new AutomationManager(profile, _config.SelectedChromePath, GetEffectiveUserDataPath());
+        automationManager.RunAutoLogin();
     }
 
     public void CloseProfileWindow(string profileName) 

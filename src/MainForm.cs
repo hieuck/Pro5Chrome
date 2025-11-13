@@ -195,6 +195,7 @@ public class MainForm : Form
         var profileContextMenu = new ContextMenuStrip();
         var openMenuItem = new ToolStripMenuItem("Mở Profile");
         var loginMenuItem = new ToolStripMenuItem("Đăng nhập Google");
+        var autoLoginMenuItem = new ToolStripMenuItem("Tự động Đăng nhập Google"); // New Auto-Login button
         var closeMenuItem = new ToolStripMenuItem("Đóng Profile");
         var maximizeMenuItem = new ToolStripMenuItem("Phóng to");
         var minimizeMenuItem = new ToolStripMenuItem("Thu nhỏ");
@@ -204,6 +205,7 @@ public class MainForm : Form
         
         openMenuItem.Click += (s, e) => { if (profilesListBox.SelectedItem != null) _profileManager.OpenChrome(profilesListBox.SelectedItem.ToString()); };
         loginMenuItem.Click += (s, e) => { if (profilesListBox.SelectedItem != null) _profileManager.OpenChrome(profilesListBox.SelectedItem.ToString(), Pro5ChromeManager.GoogleLoginUrl); };
+        autoLoginMenuItem.Click += (s, e) => { if (profilesListBox.SelectedItem != null) _profileManager.PerformAutoLogin(profilesListBox.SelectedItem.ToString()); }; // Event handler for the new button
         closeMenuItem.Click += (s, e) => { if (profilesListBox.SelectedItem != null) _profileManager.CloseProfileWindow(profilesListBox.SelectedItem.ToString()); };
         maximizeMenuItem.Click += (s, e) => { if (profilesListBox.SelectedItem != null) _profileManager.MaximizeProfileWindow(profilesListBox.SelectedItem.ToString()); };
         minimizeMenuItem.Click += (s, e) => { if (profilesListBox.SelectedItem != null) _profileManager.MinimizeProfileWindow(profilesListBox.SelectedItem.ToString()); };
@@ -214,6 +216,7 @@ public class MainForm : Form
         profileContextMenu.Items.AddRange(new ToolStripItem[] { 
             openMenuItem, 
             loginMenuItem, 
+            autoLoginMenuItem,
             new ToolStripSeparator(),
             maximizeMenuItem,
             minimizeMenuItem,
