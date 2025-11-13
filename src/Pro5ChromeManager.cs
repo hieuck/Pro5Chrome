@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Encodings.Web;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 public class Profile
@@ -39,6 +40,7 @@ public class Pro5ChromeManager
 
     #region Configuration Management
 
+    // ... (All methods in this region are unchanged)
     private void LoadConfig()
     {
         try
@@ -98,7 +100,6 @@ public class Pro5ChromeManager
 
         try
         {
-            // CORRECTED: Pass the OTP secret to the SeleniumManager
             SeleniumManager.LoginGoogle(profileDetails.Email, profileDetails.Password, profileDetails.Otp);
         }
         catch (Exception ex)
@@ -107,10 +108,32 @@ public class Pro5ChromeManager
         }
     }
 
+    // NEW: Starts the account warming process.
+    public void WarmUpAccount(string profileName)
+    {
+        if (string.IsNullOrEmpty(profileName))
+        {
+            MessageBox.Show("Vui lòng chọn một profile để nuôi.", "Chưa chọn Profile", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        try
+        {
+            string userDataPath = GetEffectiveUserDataPath();
+            // Run in a background thread to keep the UI responsive.
+            Task.Run(() => SeleniumManager.WarmUpAccount(profileName, userDataPath));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Đã xảy ra lỗi khi chuẩn bị quá trình nuôi tài khoản:\n\n{ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
     #endregion
 
     #region Profile Data Management
 
+    // ... (All methods in this region are unchanged)
     private void LoadProfiles()
     {
         if (!File.Exists(ProfilesFileName)) { _profiles = new List<Profile>(); return; }
@@ -200,6 +223,7 @@ public class Pro5ChromeManager
 
     #region Browser Process & Window Management
 
+    // ... (All methods in this region are unchanged)
     public void OpenChrome(string profileName, string url = null)
     {
         if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath)) { MessageBox.Show("Vui lòng chọn một đường dẫn trình duyệt hợp lệ."); return; }

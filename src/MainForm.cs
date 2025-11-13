@@ -17,7 +17,7 @@ public class MainForm : Form
     private ListView profilesListView;
     private ListBox urlsListBox;
     private TextBox emailTextBox, passwordTextBox, otpTextBox, newUrlTextBox;
-    private Button saveProfileButton, addUrlButton, deleteSelectedUrlButton, deleteAllUrlsButton, loginGoogleButton;
+    private Button saveProfileButton, addUrlButton, deleteSelectedUrlButton, deleteAllUrlsButton, loginGoogleButton, btnWarmUp; // Added btnWarmUp
     private Button minimizeSelectedButton, maximizeSelectedButton, restoreSelectedButton, closeSelectedButton;
     private Button addPathButton, deletePathButton, discoverProfilesButton;
     private Button openConfigButton, openProfilesJsonButton, openUrlJsonButton;
@@ -36,13 +36,13 @@ public class MainForm : Form
 
     private void InitializeComponent()
     {
+        // ... (Main form setup is unchanged)
         this.Text = "Pro5Chrome Manager by hieuck";
         this.Size = new Size(1280, 800);
         this.MinimumSize = new Size(1024, 768);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.SuspendLayout();
 
-        // Main layout: Top bars and main content area
         var mainTableLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
         mainTableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
         mainTableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
@@ -67,9 +67,8 @@ public class MainForm : Form
         discoverProfilesButton = new Button { Text = "Quét Profiles", AutoSize = true, Margin = new Padding(5) };
         pathFlowPanel.Controls.AddRange(new Control[] { pathLabel, chromePathComboBox, addPathButton, deletePathButton, discoverProfilesButton });
 
-        // --- NEW 3-COLUMN LAYOUT ---
         var contentTableLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, Padding = new Padding(5) };
-        contentTableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F)); // A bit more for profiles
+        contentTableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 34F));
         contentTableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
         contentTableLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33F));
         mainTableLayout.Controls.Add(contentTableLayout, 0, 2);
@@ -84,6 +83,7 @@ public class MainForm : Form
 
     private void InitializeProfilesList(TableLayoutPanel parent, int column, int row)
     {
+        // ... (This method is unchanged)
         var profilesGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Danh sách Profiles", Padding = new Padding(10) };
         parent.Controls.Add(profilesGroupBox, column, row);
 
@@ -94,6 +94,7 @@ public class MainForm : Form
         profilesGroupBox.Controls.AddRange(new Control[] { profilesListView, profileCountLabel });
     }
 
+    // MODIFIED: Added the new Warm Up button
     private void InitializeMiddleColumn(TableLayoutPanel parent, int column, int row)
     {
         var middleColumnLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
@@ -101,13 +102,19 @@ public class MainForm : Form
         middleColumnLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 25F)); // Window Actions
         parent.Controls.Add(middleColumnLayout, column, row);
 
-        // Top part: Details & Automation
         var profileDetailsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Chi tiết & Tự động hóa", Padding = new Padding(10) };
         middleColumnLayout.Controls.Add(profileDetailsGroupBox, 0, 0);
         
         var detailsLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
         detailsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         detailsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        // ADDED a row for the new button
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Email
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Password
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // OTP
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Save Button
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Login Button
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); // Warm up Button
         profileDetailsGroupBox.Controls.Add(detailsLayout);
 
         emailTextBox = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(5) };
@@ -115,6 +122,7 @@ public class MainForm : Form
         otpTextBox = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(5), UseSystemPasswordChar = true };
         saveProfileButton = new Button { Text = "Lưu Thông Tin", Anchor = AnchorStyles.None, AutoSize = true, Margin = new Padding(5) };
         loginGoogleButton = new Button { Text = "Tự động Đăng nhập/Kháng nghị", Dock = DockStyle.Fill, Height = 40, Margin = new Padding(5) };
+        btnWarmUp = new Button { Text = "Nuôi tài khoản", Dock = DockStyle.Fill, Height = 40, Margin = new Padding(5) }; // Initialized button
 
         detailsLayout.Controls.Add(new Label { Text = "Email:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3) }, 0, 0);
         detailsLayout.Controls.Add(emailTextBox, 1, 0);
@@ -126,8 +134,9 @@ public class MainForm : Form
         detailsLayout.Controls.Add(saveProfileButton, 1, 3);
         detailsLayout.SetColumnSpan(loginGoogleButton, 2);
         detailsLayout.Controls.Add(loginGoogleButton, 0, 4);
+        detailsLayout.SetColumnSpan(btnWarmUp, 2);
+        detailsLayout.Controls.Add(btnWarmUp, 0, 5); // Added button to layout
 
-        // Bottom part: Window Management
         var windowActionsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Quản lý Cửa sổ", Padding = new Padding(8) };
         middleColumnLayout.Controls.Add(windowActionsGroupBox, 0, 1);
 
@@ -151,6 +160,7 @@ public class MainForm : Form
 
     private void InitializeUrlManagement(TableLayoutPanel parent, int column, int row)
     {
+        // ... (This method is unchanged)
         var urlGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Quản lý URL", Padding = new Padding(10) };
         parent.Controls.Add(urlGroupBox, column, row);
         
@@ -189,6 +199,7 @@ public class MainForm : Form
     
     private void InitializeContextMenu()
     {
+        // ... (This method is unchanged)
         profileContextMenuStrip = new ContextMenuStrip();
         var openItem = profileContextMenuStrip.Items.Add("Mở Profile");
         var closeItem = profileContextMenuStrip.Items.Add("Đóng Profile");
@@ -212,8 +223,10 @@ public class MainForm : Form
         profilesListView.ContextMenuStrip = profileContextMenuStrip;
     }
 
+    // MODIFIED: Added event handler for the new button
     private void WireUpEventHandlers()
     {
+        // ... (Most handlers are unchanged)
         chromePathComboBox.SelectedIndexChanged += (s, e) => { if (chromePathComboBox.SelectedItem is string path) _manager.SetSelectedChromePath(path); RefreshProfileList(); };
         addPathButton.Click += AddPathButton_Click;
         deletePathButton.Click += DeletePathButton_Click;
@@ -224,6 +237,7 @@ public class MainForm : Form
 
         saveProfileButton.Click += SaveProfileButton_Click;
         loginGoogleButton.Click += LoginGoogleButton_Click;
+        btnWarmUp.Click += BtnWarmUp_Click; // Added handler
 
         addUrlButton.Click += (s, e) => { if (!string.IsNullOrEmpty(newUrlTextBox.Text.Trim())) { _urlManager.AddUrl(newUrlTextBox.Text.Trim()); newUrlTextBox.Clear(); RefreshUrlList(); } };
         deleteSelectedUrlButton.Click += (s, e) => { if (urlsListBox.SelectedItem is string url) { _urlManager.DeleteUrl(url); RefreshUrlList(); } };
@@ -243,6 +257,7 @@ public class MainForm : Form
         openUrlJsonButton.Click += (s, e) => SafeOpenFile("URL.json");
     }
 
+    // ... (MainForm_Load, Refresh* methods are unchanged) 
     private void MainForm_Load(object sender, EventArgs e)
     {
         this.TopMost = _manager.IsAlwaysOnTop();
@@ -354,6 +369,7 @@ CẢNH BÁO: Việc xóa thư mục dữ liệu không thể hoàn tác.";
 
     private void ProfilesListView_SelectedIndexChanged(object sender, EventArgs e)
     {
+        // ... (This method is unchanged)
         string profileName = GetFirstSelectedProfile();
         if (profileName != null)
         {
@@ -373,6 +389,7 @@ CẢNH BÁO: Việc xóa thư mục dữ liệu không thể hoàn tác.";
 
     private void SaveProfileButton_Click(object sender, EventArgs e)
     {
+        // ... (This method is unchanged)
         string profileName = GetFirstSelectedProfile();
         if (profileName != null)
         {
@@ -383,6 +400,7 @@ CẢNH BÁO: Việc xóa thư mục dữ liệu không thể hoàn tác.";
 
     private async void LoginGoogleButton_Click(object sender, EventArgs e)
     {
+        // ... (This method is unchanged)
         string profileName = GetFirstSelectedProfile();
         if (string.IsNullOrEmpty(profileName))
         {
@@ -390,34 +408,63 @@ CẢNH BÁO: Việc xóa thư mục dữ liệu không thể hoàn tác.";
             return;
         }
 
-        // Disable the button to prevent multiple clicks
         loginGoogleButton.Enabled = false;
         this.Cursor = Cursors.WaitCursor;
 
         try
         {
-            // Run the automation task in the background to keep the UI responsive
             await Task.Run(() => _manager.AutomateLogin(profileName));
         }
         finally
         {
-            // Re-enable the button and restore cursor on completion or failure
             loginGoogleButton.Enabled = true;
             this.Cursor = Cursors.Default;
         }
     }
 
+    // NEW: Event handler for the Warm Up button
+    private async void BtnWarmUp_Click(object sender, EventArgs e)
+    {
+        string profileName = GetFirstSelectedProfile();
+        if (string.IsNullOrEmpty(profileName))
+        {
+            MessageBox.Show("Vui lòng chọn một profile để nuôi.", "Chưa chọn profile");
+            return;
+        }
+
+        // Disable buttons to prevent multiple clicks
+        btnWarmUp.Enabled = false;
+        loginGoogleButton.Enabled = false;
+        this.Cursor = Cursors.WaitCursor;
+
+        try
+        {
+            // Run the long-running automation in a background thread
+            await Task.Run(() => _manager.WarmUpAccount(profileName));
+        }
+        finally
+        {
+            // Re-enable buttons and restore cursor on completion or failure
+            btnWarmUp.Enabled = true;
+            loginGoogleButton.Enabled = true;
+            this.Cursor = Cursors.Default;
+        }
+    }
+
+    // MODIFIED: Added the new button to the state check
     private void SetControlStates()
     {
         bool isProfileSelected = GetFirstSelectedProfile() != null;
         saveProfileButton.Enabled = isProfileSelected;
         loginGoogleButton.Enabled = isProfileSelected;
+        btnWarmUp.Enabled = isProfileSelected; // Added this line
         minimizeSelectedButton.Enabled = isProfileSelected;
-        maximizeSelectedButton.Enabled = is-selected;
+        maximizeSelectedButton.Enabled = isProfileSelected;
         restoreSelectedButton.Enabled = isProfileSelected;
         closeSelectedButton.Enabled = isProfileSelected;
     }
 
+    // ... (Helper methods are unchanged)
     private string[] GetSelectedProfileNames()
     {
         if (profilesListView.SelectedItems.Count == 0) return new string[0];

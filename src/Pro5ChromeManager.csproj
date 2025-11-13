@@ -22,7 +22,16 @@
 
     <!-- NEW: Library for generating Time-based One-Time Passwords (TOTP) -->
     <PackageReference Include="Otp.NET" Version="1.4.0" />
+  </ItemGroup>
 
+  <!-- NEW: This section ensures that necessary text files are copied to the output directory (e.g., bin/Debug) -->
+  <ItemGroup>
+    <None Update="Kháng.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="keywords.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
