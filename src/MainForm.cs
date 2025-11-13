@@ -2,13 +2,14 @@
 using System;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Windows.Forms;
 
 public class MainForm : Form
 {
     private Pro5ChromeManager _profileManager;
     private UrlManager _urlManager;
-    private AutomationManager _automationManager; 
+    private AutomationManager _automationManager;
 
     // --- UI Controls ---
     private ComboBox chromePathComboBox;
@@ -19,7 +20,7 @@ public class MainForm : Form
     private Button minimizeSelectedButton, maximizeSelectedButton, restoreSelectedButton, closeSelectedButton;
     private Button addPathButton, deletePathButton, discoverProfilesButton;
     private Button openConfigButton, openProfilesJsonButton, openUrlJsonButton;
-    private CheckBox alwaysOnTopCheckBox;
+    private CheckBox alwaysOnTopCheckBox, hideProfileNamesCheckBox;
     private Label profileCountLabel;
     private ContextMenuStrip profileContextMenuStrip;
 
@@ -36,7 +37,8 @@ public class MainForm : Form
     private void InitializeComponent()
     {
         this.Text = "Pro5Chrome Manager by hieuck";
-        this.Size = new Size(1200, 800);
+        this.Size = new Size(1280, 800);
+        this.MinimumSize = new Size(1024, 600);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.SuspendLayout();
 
@@ -54,23 +56,24 @@ public class MainForm : Form
         openProfilesJsonButton = new Button { Text = "Mở profiles.json", AutoSize = true, Margin = new Padding(5) };
         openUrlJsonButton = new Button { Text = "Mở URL.json", AutoSize = true, Margin = new Padding(5) };
         alwaysOnTopCheckBox = new CheckBox { Text = "Luôn trên cùng", AutoSize = true, Margin = new Padding(15, 8, 5, 5) };
-        topFlowPanel.Controls.AddRange(new Control[] { openConfigButton, openProfilesJsonButton, openUrlJsonButton, alwaysOnTopCheckBox });
+        hideProfileNamesCheckBox = new CheckBox { Text = "Ẩn tên Profile", AutoSize = true, Margin = new Padding(15, 8, 5, 5) };
+        topFlowPanel.Controls.AddRange(new Control[] { openConfigButton, openProfilesJsonButton, openUrlJsonButton, alwaysOnTopCheckBox, hideProfileNamesCheckBox });
 
         var pathLabel = new Label { Text = "Đường dẫn trình duyệt:", AutoSize = true, Margin = new Padding(0, 8, 0, 0) };
-        chromePathComboBox = new ComboBox { Width = 450, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(5, 5, 0, 0) };
+        chromePathComboBox = new ComboBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 450, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(5, 5, 0, 0) };
         addPathButton = new Button { Text = "Thêm...", AutoSize = true, Margin = new Padding(5) };
         deletePathButton = new Button { Text = "Xóa", AutoSize = true, Margin = new Padding(5) };
         discoverProfilesButton = new Button { Text = "Quét Profiles", AutoSize = true, Margin = new Padding(5) };
         pathFlowPanel.Controls.AddRange(new Control[] { pathLabel, chromePathComboBox, addPathButton, deletePathButton, discoverProfilesButton });
 
-        var mainSplitContainer = new SplitContainer { Dock = DockStyle.Fill, SplitterDistance = 300, BorderStyle = BorderStyle.Fixed3D };
+        var mainSplitContainer = new SplitContainer { Dock = DockStyle.Fill, SplitterDistance = 350, BorderStyle = BorderStyle.Fixed3D, IsSplitterFixed = false };
         mainTableLayout.Controls.Add(mainSplitContainer, 0, 2);
 
         var profilesGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Danh sách Profiles", Padding = new Padding(10) };
         profileCountLabel = new Label { Dock = DockStyle.Top, Text = "Số lượng Profiles: 0", Padding = new Padding(0, 0, 0, 5) };
         profilesListView = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, GridLines = true, MultiSelect = true };
-        profilesListView.Columns.Add("#", 40);
-        profilesListView.Columns.Add("Tên Profile", 250);
+        profilesListView.Columns.Add("#", 50, HorizontalAlignment.Left);
+        profilesListView.Columns.Add("Tên Profile", -2, HorizontalAlignment.Left); // -2 makes it auto-resize
         profilesGroupBox.Controls.AddRange(new Control[] { profilesListView, profileCountLabel });
         mainSplitContainer.Panel1.Controls.Add(profilesGroupBox);
 
@@ -79,8 +82,7 @@ public class MainForm : Form
         rightTableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 70));
         mainSplitContainer.Panel2.Controls.Add(rightTableLayout);
 
-        // --- FIX: Changed Orientation to Vertical for a Left/Right split ---
-        var rightSplitContainer = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical, SplitterDistance = 450, BorderStyle = BorderStyle.Fixed3D };
+        var rightSplitContainer = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Vertical, SplitterDistance = 450, BorderStyle = BorderStyle.Fixed3D, IsSplitterFixed = false };
         rightTableLayout.Controls.Add(rightSplitContainer, 0, 0);
 
         InitializeDetailsAndAutomation(rightSplitContainer.Panel1);
@@ -95,7 +97,7 @@ public class MainForm : Form
         windowActionsFlowPanel.Controls.AddRange(new Control[] { minimizeSelectedButton, maximizeSelectedButton, restoreSelectedButton, closeSelectedButton });
         windowActionsGroupBox.Controls.Add(windowActionsFlowPanel);
         rightTableLayout.Controls.Add(windowActionsGroupBox, 0, 1);
-        
+
         InitializeContextMenu();
 
         this.ResumeLayout(false);
@@ -103,27 +105,22 @@ public class MainForm : Form
 
     private void InitializeDetailsAndAutomation(Control parent)
     {
-        var detailsTablePanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
-        detailsTablePanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 180));
-        detailsTablePanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        parent.Controls.Add(detailsTablePanel);
-
+        parent.Padding = new Padding(5);
         var profileDetailsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Chi tiết & Tự động hóa", Padding = new Padding(10) };
-        emailTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 300, Location = new Point(100, 27) }; // Adjusted width
-        passwordTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 300, Location = new Point(100, 57), UseSystemPasswordChar = true }; // Adjusted width
-        otpTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 300, Location = new Point(100, 87) }; // Adjusted width
-        saveProfileButton = new Button { Text = "Lưu Thông Tin", AutoSize = true, Location = new Point(98, 125) };
-        profileDetailsGroupBox.Controls.AddRange(new Control[] { new Label { Text = "Email:", Location = new Point(15, 30), AutoSize = true }, emailTextBox, new Label { Text = "Password:", Location = new Point(15, 60), AutoSize = true }, passwordTextBox, new Label { Text = "OTP Secret:", Location = new Point(15, 90), AutoSize = true }, otpTextBox, saveProfileButton });
+        parent.Controls.Add(profileDetailsGroupBox);
+
+        emailTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Location = new Point(100, 27) };
+        passwordTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Location = new Point(100, 57), UseSystemPasswordChar = true };
+        otpTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Location = new Point(100, 87) };
+        saveProfileButton = new Button { Text = "Lưu Thông Tin", AutoSize = true, Location = new Point(98, 125), Anchor = AnchorStyles.Top | AnchorStyles.Left };
+        loginGoogleButton = new Button { Text = "Tự động Đăng nhập Google", AutoSize = true, Height = 30, Padding = new Padding(5), Location = new Point(15, 170), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right };
         
-        var automationGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Kịch bản Tự động hóa", Padding = new Padding(20) };
-        loginGoogleButton = new Button { Text = "Tự động Đăng nhập Google", AutoSize = true, Height = 30, Padding = new Padding(5) };
-        automationGroupBox.Controls.Add(loginGoogleButton);
-        
-        detailsTablePanel.Controls.AddRange(new Control[] { profileDetailsGroupBox, automationGroupBox });
+        profileDetailsGroupBox.Controls.AddRange(new Control[] { new Label { Text = "Email:", Location = new Point(15, 30), AutoSize = true }, emailTextBox, new Label { Text = "Password:", Location = new Point(15, 60), AutoSize = true }, passwordTextBox, new Label { Text = "OTP Secret:", Location = new Point(15, 90), AutoSize = true }, otpTextBox, saveProfileButton, loginGoogleButton });
     }
 
     private void InitializeUrlManagement(Control parent)
     {
+        parent.Padding = new Padding(5);
         var urlTableLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
         urlTableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         urlTableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
@@ -135,14 +132,17 @@ public class MainForm : Form
         urlTableLayout.Controls.Add(urlsGroupBox, 0, 0);
 
         var urlActionsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Hành động", Padding = new Padding(10) };
-        var urlActionsFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
-        newUrlTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 250, Margin = new Padding(5) }; // Adjusted width
-        addUrlButton = new Button { Text = "Thêm URL", AutoSize = true, Margin = new Padding(5) };
-        deleteSelectedUrlButton = new Button { Text = "Xóa URL", AutoSize = true, Margin = new Padding(5) };
-        deleteAllUrlsButton = new Button { Text = "Xóa tất cả", AutoSize = true, Margin = new Padding(5), ForeColor = Color.Red };
+        var urlActionsFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false, Padding = new Padding(0)};
+        newUrlTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Margin = new Padding(5) };
+        addUrlButton = new Button { Text = "Thêm", AutoSize = true, Margin = new Padding(5) };
+        deleteSelectedUrlButton = new Button { Text = "Xóa", AutoSize = true, Margin = new Padding(5) };
+        deleteAllUrlsButton = new Button { Text = "Xóa hết", AutoSize = true, Margin = new Padding(5), ForeColor = Color.Red };
         urlActionsFlowPanel.Controls.AddRange(new Control[] { newUrlTextBox, addUrlButton, deleteSelectedUrlButton, deleteAllUrlsButton });
         urlActionsGroupBox.Controls.Add(urlActionsFlowPanel);
         urlTableLayout.Controls.Add(urlActionsGroupBox, 0, 1);
+        // Allow textbox to grow
+        urlActionsFlowPanel.SetFlowBreak(newUrlTextBox, true);
+        newUrlTextBox.Width = urlActionsFlowPanel.DisplayRectangle.Width - 20;
     }
 
     private void InitializeContextMenu()
@@ -154,7 +154,7 @@ public class MainForm : Form
         var minimizeItem = profileContextMenuStrip.Items.Add("Thu nhỏ");
         var maximizeItem = profileContextMenuStrip.Items.Add("Phóng to");
         var restoreItem = profileContextMenuStrip.Items.Add("Khôi phục");
-        
+
         openItem.Click += (s, e) => ForEachSelectedProfile(p => _profileManager.OpenChrome(p));
         closeItem.Click += (s, e) => ForEachSelectedProfile(p => _profileManager.CloseProfileWindow(p));
         minimizeItem.Click += (s, e) => ForEachSelectedProfile(p => WindowManager.PerformActionOnProfileWindow(p, WindowManager.SW_MINIMIZE));
@@ -163,7 +163,7 @@ public class MainForm : Form
 
         profilesListView.ContextMenuStrip = profileContextMenuStrip;
     }
-    
+
     private void WireUpEventHandlers()
     {
         chromePathComboBox.SelectedIndexChanged += (s, e) => { if (chromePathComboBox.SelectedItem is string path) _profileManager.SetSelectedChromePath(path); RefreshProfileList(); };
@@ -188,6 +188,8 @@ public class MainForm : Form
         closeSelectedButton.Click += (s, e) => ForEachSelectedProfile(p => _profileManager.CloseProfileWindow(p));
 
         alwaysOnTopCheckBox.CheckedChanged += (s, e) => { this.TopMost = alwaysOnTopCheckBox.Checked; _profileManager.SetAlwaysOnTop(alwaysOnTopCheckBox.Checked); };
+        hideProfileNamesCheckBox.CheckedChanged += (s, e) => RefreshProfileList();
+
         openConfigButton.Click += (s, e) => SafeOpenFile("config.json");
         openProfilesJsonButton.Click += (s, e) => SafeOpenFile("profiles.json");
         openUrlJsonButton.Click += (s, e) => SafeOpenFile("URL.json");
@@ -213,18 +215,24 @@ public class MainForm : Form
 
     private void RefreshProfileList()
     {
-        string[] selectedProfiles = GetSelectedProfileNames();
+        var selectedProfileNames = GetSelectedProfileNames(); 
         profilesListView.Items.Clear();
         var profiles = _profileManager.GetProfiles();
+        bool hideNames = hideProfileNamesCheckBox.Checked;
+
         for (int i = 0; i < profiles.Count; i++)
         {
+            var profileName = profiles[i];
             var item = new ListViewItem((i + 1).ToString());
-            item.SubItems.Add(profiles[i]);
+            item.Tag = profileName; // Store the real name in the Tag property
+            item.SubItems.Add(hideNames ? "******" : profileName);
             profilesListView.Items.Add(item);
-            if (Array.IndexOf(selectedProfiles, profiles[i]) > -1) item.Selected = true;
+            if (selectedProfileNames.Contains(profileName)) item.Selected = true;
         }
+
         profileCountLabel.Text = $"Số lượng Profiles: {profiles.Count}";
-        if (profilesListView.SelectedItems.Count > 0) profilesListView.Focus();
+        if (profilesListView.SelectedItems.Count == 0 && profilesListView.Items.Count > 0) profilesListView.Items[0].Selected = true;
+        profilesListView.Focus();
         SetControlStates();
     }
 
@@ -312,20 +320,21 @@ public class MainForm : Form
     private string[] GetSelectedProfileNames()
     {
         if (profilesListView.SelectedItems.Count == 0) return new string[0];
-        string[] names = new string[profilesListView.SelectedItems.Count];
-        for(int i = 0; i < profilesListView.SelectedItems.Count; i++)
-            names[i] = profilesListView.SelectedItems[i].SubItems[1].Text;
-        return names;
+        return profilesListView.SelectedItems.Cast<ListViewItem>().Select(item => item.Tag.ToString()).ToArray();
     }
 
-    private string GetFirstSelectedProfile() => profilesListView.SelectedItems.Count > 0 ? profilesListView.SelectedItems[0].SubItems[1].Text : null;
+    private string GetFirstSelectedProfile()
+    {
+        if (profilesListView.SelectedItems.Count == 0) return null;
+        return profilesListView.SelectedItems[0].Tag.ToString();
+    }
 
     private void ForEachSelectedProfile(Action<string> action)
     {
         if (profilesListView.SelectedItems.Count == 0) return;
         foreach (ListViewItem item in profilesListView.SelectedItems)
         {
-            action(item.SubItems[1].Text);
+            if (item.Tag is string profileName) action(profileName);
         }
     }
 
