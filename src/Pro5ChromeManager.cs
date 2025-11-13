@@ -186,7 +186,7 @@ public class Pro5ChromeManager
             string json = File.ReadAllText(ProfilesFileName);
             if (string.IsNullOrWhiteSpace(json)) { _profiles = new List<Profile>(); return; }
 
-            if (json.Trim().StartsWith("[") && json.Contains("\""))
+            if (json.Trim().StartsWith("[") && json.Contains("\"\""))
             {
                 try
                 {
@@ -306,19 +306,6 @@ public class Pro5ChromeManager
             Process.Start(_config.SelectedChromePath, arguments);
         }
         catch (Exception ex) { MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}"); }
-    }
-
-    public void PerformAutoLogin(string profileName)
-    {
-        var profile = GetProfileDetails(profileName);
-        if (profile == null)
-        {
-            MessageBox.Show($"Không tìm thấy profile '{profileName}'.", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return;
-        }
-
-        var automationManager = new AutomationManager(profile, _config.SelectedChromePath, GetEffectiveUserDataPath());
-        automationManager.RunAutoLogin();
     }
 
     public void CloseProfileWindow(string profileName) 

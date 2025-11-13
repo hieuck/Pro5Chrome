@@ -86,23 +86,47 @@ public static class WindowManager
 
     private static IntPtr FindWindowForProfile(string profileName, List<string> allProfileNames, List<IntPtr> allBrowserWindows)
     {
+        // Build a map of profile names to their handles for precise identification
+        var profileHandleMap = new Dictionary<string, IntPtr>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var handle in allBrowserWindows)
+        {
+            int length = GetWindowTextLength(handle);
+            if (length == 0) continue;
+
+            var titleBuilder = new StringBuilder(length + 1);
+            GetWindowText(handle, titleBuilder, titleBuilder.Capacity);
+            string windowTitle = titleBuilder.ToString();
+
+            // Find the most specific profile name that matches the window title
+            var matchingProfile = allProfileNames
+                .Where(p => !p.Equals("Default", StringComparison.OrdinalIgnoreCase) && 
+                            (windowTitle.Contains($" - {p} - ") || windowTitle.StartsWith($"{p} - ")))
+                .OrderByDescending(p => p.Length) // Prioritize longer, more specific names
+                .FirstOrDefault();
+
+            if (matchingProfile != null && !profileHandleMap.ContainsKey(matchingProfile))
+            {
+                profileHandleMap[matchingProfile] = handle;
+            }
+        }
+
+        // If the requested profile was found, return its handle
+        if (profileHandleMap.TryGetValue(profileName, out IntPtr specificHandle))
+        {
+            return specificHandle;
+        }
+
+        // Special handling for "Default" profile: it's the window that wasn't mapped to any other profile
         if (profileName.Equals("Default", StringComparison.OrdinalIgnoreCase))
         {
-            var identifiedWindows = new HashSet<IntPtr>();
-            // First, identify all windows that belong to a NAMED profile
-            foreach (var name in allProfileNames.Where(p => !p.Equals("Default", StringComparison.OrdinalIgnoreCase)))
-            {
-                 var foundHandle = FindWindowForNamedProfile(name, allBrowserWindows);
-                 if(foundHandle != IntPtr.Zero) identifiedWindows.Add(foundHandle);
-            }
-            // The "Default" window is the one that is left over
-            return allBrowserWindows.FirstOrDefault(h => !identifiedWindows.Contains(h));
+            var identifiedHandles = new HashSet<IntPtr>(profileHandleMap.Values);
+            return allBrowserWindows.FirstOrDefault(h => !identifiedHandles.Contains(h));
         }
-        else
-        {
-            return FindWindowForNamedProfile(profileName, allBrowserWindows);
-        }
+
+        return IntPtr.Zero; // Return zero if no specific window was found
     }
+
 
     private static IntPtr FindWindowForNamedProfile(string profileName, List<IntPtr> browserWindows)
     {
