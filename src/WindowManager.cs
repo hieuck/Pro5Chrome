@@ -2,9 +2,12 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
 
 public static class WindowManager
 {
@@ -29,12 +32,34 @@ public static class WindowManager
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll")]
+    static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")]
+    static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+    [DllImport("user32.dll")]
+    static extern bool TileWindows(IntPtr hwndParent, int wHow, Rectangle rc, int cKids, IntPtr[] lpKids);
+    [DllImport("user32.dll")]
+    static extern bool CascadeWindows(IntPtr hwndParent, int wHow, Rectangle rc, int cKids, IntPtr[] lpKids);
+
 
     // --- Window State Constants ---
     public const int SW_MAXIMIZE = 3;
     public const int SW_MINIMIZE = 6;
     public const int SW_RESTORE = 9;
     public const uint WM_CLOSE = 0x0010;
+    const byte VK_CONTROL = 0x11;
+    const byte VK_TAB = 0x09;
+    const uint KEYEVENTF_KEYUP = 0x0002;
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+
 
     // --- State Tracking ---
     private static readonly Dictionary<string, Process> _profileProcesses = new Dictionary<string, Process>();
@@ -42,24 +67,17 @@ public static class WindowManager
 
     // --- Public Methods ---
 
-    /// <summary>
-    /// Registers a process associated with a profile name for window tracking.
-    /// </summary>
     public static void RegisterProfileProcess(string profileName, Process process)
     {
         if (string.IsNullOrEmpty(profileName) || process == null) return;
         _profileProcesses[profileName] = process;
-        // Attempt to find the handle proactively. It might take a moment to appear.
-        ThreadPool.QueueUserWorkItem(_ => 
+        ThreadPool.QueueUserWorkItem(_ =>
         {
-            Thread.Sleep(500); // Wait for the window to likely be created
+            Thread.Sleep(500);
             FindAndCacheWindowHandle(profileName);
         });
     }
 
-    /// <summary>
-    /// Removes a profile from tracking.
-    /// </summary>
     public static void UnregisterProfile(string profileName)
     {
         if (string.IsNullOrEmpty(profileName)) return;
@@ -67,87 +85,112 @@ public static class WindowManager
         _profileWindowHandles.Remove(profileName);
     }
 
-    /// <summary>
-    /// Performs a window state change action on a specific Chrome profile window.
-    /// </summary>
     public static void PerformActionOnProfileWindow(string profileName, int command)
     {
         IntPtr targetHWnd = GetWindowHandle(profileName);
         if (targetHWnd != IntPtr.Zero) ShowWindow(targetHWnd, command);
     }
 
-    /// <summary>
-    /// Sends a close message to a specific Chrome profile window.
-    /// </summary>
     public static void CloseProfileWindow(string profileName)
     {
-        IntPtr targetHWnd = GetWindowHandle(profileName, false); // Get handle without unregistering yet
+        IntPtr targetHWnd = GetWindowHandle(profileName, false);
         if (targetHWnd != IntPtr.Zero)
         {
             SendMessage(targetHWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
         }
-        // Always unregister the profile after a close attempt.
         UnregisterProfile(profileName);
     }
+    public static string GetActiveTabTitle(string profileName)
+    {
+        IntPtr hWnd = GetWindowHandle(profileName, false);
+        if (hWnd != IntPtr.Zero)
+        {
+            int length = GetWindowTextLength(hWnd);
+            StringBuilder sb = new StringBuilder(length + 1);
+            GetWindowText(hWnd, sb, sb.Capacity);
+            return sb.ToString();
+        }
+        return "N/A";
+    }
+
+    public static void SwitchToNextTab(string profileName)
+    {
+        IntPtr hWnd = GetWindowHandle(profileName, false);
+        if (hWnd != IntPtr.Zero)
+        {
+            SetForegroundWindow(hWnd);
+            Thread.Sleep(100);
+            keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero);
+            keybd_event(VK_TAB, 0, 0, UIntPtr.Zero);
+            keybd_event(VK_TAB, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        }
+    }
+    public static void ArrangeWindows(bool cascade)
+    {
+        var handles = _profileWindowHandles.Values.Where(h => IsWindow(h) && IsWindowVisible(h)).ToArray();
+        if (handles.Length < 1) return;
+
+        Rectangle screen = Screen.PrimaryScreen.WorkingArea;
+
+        if (cascade)
+        {
+            CascadeWindows(IntPtr.Zero, 0, screen, handles.Length, handles);
+        }
+        else // Tile
+        {
+            TileWindows(IntPtr.Zero, 1, screen, handles.Length, handles); // MDITILE_HORIZONTAL
+        }
+    }
+
 
     // --- Private Helper Methods ---
-
-    /// <summary>
-    /// Gets the window handle for a profile. Tries cache, then live process, then unregisters.
-    /// </summary>
     private static IntPtr GetWindowHandle(string profileName, bool unregisterOnFailure = true)
     {
         if (string.IsNullOrEmpty(profileName)) return IntPtr.Zero;
 
-        // 1. Check cached handle first
         if (_profileWindowHandles.TryGetValue(profileName, out IntPtr handle) && IsWindow(handle))
         {
             return handle;
         }
 
-        // 2. If cache fails, try to find it via the tracked process
         IntPtr foundHandle = FindAndCacheWindowHandle(profileName);
         if (foundHandle != IntPtr.Zero)
         {
             return foundHandle;
         }
 
-        // 3. If not found, the process/window is gone. Clean up.
-        if(unregisterOnFailure) UnregisterProfile(profileName);
+        if (unregisterOnFailure) UnregisterProfile(profileName);
         return IntPtr.Zero;
     }
 
-    /// <summary>
-    /// Finds the window handle for a tracked process and updates the cache.
-    /// </summary>
     private static IntPtr FindAndCacheWindowHandle(string profileName)
     {
         if (!_profileProcesses.TryGetValue(profileName, out Process proc) || proc.HasExited) return IntPtr.Zero;
 
         IntPtr foundHandle = IntPtr.Zero;
 
-        // Try the fast MainWIndowHandle first, with a refresh
         proc.Refresh();
-        if (proc.MainWindowHandle != IntPtr.Zero && IsWindowVisible(proc.MainWindowHandle)) 
+        if (proc.MainWindowHandle != IntPtr.Zero && IsWindowVisible(proc.MainWindowHandle))
         {
             foundHandle = proc.MainWindowHandle;
-        } 
-        else // Fallback to enumerating all windows for that process ID
+        }
+        else
         {
-             EnumWindows((hWnd, lParam) =>
+            EnumWindows((hWnd, lParam) =>
             {
                 GetWindowThreadProcessId(hWnd, out uint pid);
                 if (pid == proc.Id && IsWindowVisible(hWnd) && GetWindowTextLength(hWnd) > 0)
                 {
                     foundHandle = hWnd;
-                    return false; // Stop searching
+                    return false;
                 }
-                return true; // Continue
+                return true;
             }, IntPtr.Zero);
         }
-       
+
         if (foundHandle != IntPtr.Zero) _profileWindowHandles[profileName] = foundHandle;
-        
+
         return foundHandle;
     }
 }
