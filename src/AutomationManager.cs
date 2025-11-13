@@ -43,13 +43,13 @@ public class AutomationManager
             // Find and enter email
             var emailInput = wait.Until(ExpectedConditions.ElementIsVisible(By.CssSelector("input[type='email']")));
             emailInput.SendKeys(email);
-            emailInput.SendKeys(Keys.Enter);
+            emailInput.SendKeys(OpenQA.Selenium.Keys.Enter);
 
             // Find and enter password
             var passwordInput = wait.Until(ExpectedConditions.ElementIsVisible(By.CssSelector("input[type='password']")));
             await Task.Delay(1500); // Wait a bit for the UI to be ready for password
             passwordInput.SendKeys(password);
-            passwordInput.SendKeys(Keys.Enter);
+            passwordInput.SendKeys(OpenQA.Selenium.Keys.Enter);
 
             // Wait for potential 2FA or completion, but don't close the browser.
             // The user can take over from here.
