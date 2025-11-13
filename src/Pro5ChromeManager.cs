@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Windows.Forms;
 
+// Represents the structure of a single profile with its details.
 public class Profile
 {
     public string Name { get; set; }
@@ -15,21 +16,22 @@ public class Profile
     public string Otp { get; set; }
 }
 
+// Represents the application's configuration data stored in config.json.
+public class AppConfig
+{
+    public List<string> ChromePaths { get; set; } = new List<string>();
+    public string SelectedChromePath { get; set; }
+    public bool AlwaysOnTop { get; set; } = false;
+}
+
+// Manages all business logic for profiles, configuration, and browser interaction.
 public class Pro5ChromeManager
 {
     private const string ConfigFileName = "config.json";
     private const string ProfilesFileName = "profiles.json";
-    public const string GoogleLoginUrl = "https://accounts.google.com";
 
     private List<Profile> _profiles = new List<Profile>();
-    private Config _config = new Config();
-
-    private class Config
-    {
-        public List<string> ChromePaths { get; set; } = new List<string>();
-        public string SelectedChromePath { get; set; }
-        public bool AlwaysOnTop { get; set; } = false;
-    }
+    private AppConfig _config = new AppConfig();
 
     public Pro5ChromeManager()
     {
@@ -37,49 +39,27 @@ public class Pro5ChromeManager
         LoadProfiles();
     }
 
-    // --- Configuration Management ---
+    #region Configuration Management (config.json)
 
     private void LoadConfig()
     {
-        if (File.Exists(ConfigFileName))
+        try
         {
-            try
+            if (File.Exists(ConfigFileName))
             {
                 string json = File.ReadAllText(ConfigFileName);
-                _config = JsonSerializer.Deserialize<Config>(json) ?? new Config();
-
-                // --- Self-healing logic for Chrome Paths ---
-                int originalCount = _config.ChromePaths.Count;
-                
-                // Filter out any paths that are null, empty, or don't point to a real file.
-                _config.ChromePaths = _config.ChromePaths
-                                           .Where(p => !string.IsNullOrWhiteSpace(p) && File.Exists(p))
-                                           .ToList();
-
-                bool needsSave = originalCount != _config.ChromePaths.Count;
-
-                // If the currently selected path is no longer valid, select the first valid one or null.
-                if (!_config.ChromePaths.Contains(_config.SelectedChromePath))
-                {
-                    _config.SelectedChromePath = _config.ChromePaths.FirstOrDefault();
-                    needsSave = true;
-                }
-                
-                // If any invalid paths were removed or the selection changed, save the cleaned config.
-                if (needsSave)
-                {
-                    SaveConfig();
-                }
+                _config = JsonSerializer.Deserialize<AppConfig>(json) ?? new AppConfig();
             }
-            catch (Exception ex)
+            else
             {
-                MessageBox.Show($"Lỗi khi đọc hoặc làm sạch file config.json: {ex.Message}");
-                _config = new Config();
+                // Create a default config file if it doesn't exist
+                SaveConfig();
             }
         }
-        else
+        catch (Exception ex)
         {
-            SaveConfig(); // Create a new config file if it doesn't exist
+            MessageBox.Show($"Lỗi khi đọc file config.json: {ex.Message}", "Lỗi Cấu hình");
+            _config = new AppConfig();
         }
     }
 
@@ -92,64 +72,38 @@ public class Pro5ChromeManager
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Lỗi khi lưu file config.json: {ex.Message}");
+            MessageBox.Show($"Lỗi khi lưu file config.json: {ex.Message}", "Lỗi Cấu hình");
         }
     }
 
-    public List<string> GetChromePaths() => _config.ChromePaths;
+    public List<string> GetAllChromePaths() => _config.ChromePaths;
     public string GetSelectedChromePath() => _config.SelectedChromePath;
     public bool IsAlwaysOnTop() => _config.AlwaysOnTop;
 
-    public void SetAlwaysOnTop(bool value)
+    public void SetSelectedChromePath(string path)
     {
-        _config.AlwaysOnTop = value;
-        SaveConfig();
+        if (_config.ChromePaths.Contains(path))
+        {
+            _config.SelectedChromePath = path;
+            SaveConfig();
+        }
     }
 
-    public bool AddAndSelectChromePath(string path)
+    public void AddChromePath(string path)
     {
-        if (string.IsNullOrWhiteSpace(path)) return false;
-
-        string executablePath = path;
-
-        if (Directory.Exists(path))
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+        path = Path.GetFullPath(path);
+        if (!_config.ChromePaths.Contains(path))
         {
-            string potentialChrome = Path.Combine(path, "chrome.exe");
-            string potentialCent = Path.Combine(path, "centbrowser.exe");
-            if (File.Exists(potentialChrome))
-            {
-                executablePath = potentialChrome;
-            }
-            else if (File.Exists(potentialCent))
-            {
-                executablePath = potentialCent;
-            }
-            else
-            {
-                return false;
-            }
+            _config.ChromePaths.Add(path);
+            SaveConfig();
         }
-        else if (!File.Exists(executablePath) || !executablePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        executablePath = Path.GetFullPath(executablePath);
-
-        if (!_config.ChromePaths.Contains(executablePath))
-        {
-            _config.ChromePaths.Add(executablePath);
-        }
-        _config.SelectedChromePath = executablePath;
-        SaveConfig();
-        return true;
     }
 
     public void DeleteChromePath(string path)
     {
-        if (_config.ChromePaths.Contains(path))
+        if (_config.ChromePaths.Remove(path))
         {
-            _config.ChromePaths.Remove(path);
             if (_config.SelectedChromePath == path)
             {
                 _config.SelectedChromePath = _config.ChromePaths.FirstOrDefault();
@@ -158,25 +112,35 @@ public class Pro5ChromeManager
         }
     }
 
+    public void SetAlwaysOnTop(bool value)
+    {
+        _config.AlwaysOnTop = value;
+        SaveConfig();
+    }
+
     public string GetEffectiveUserDataPath()
     {
         if (!string.IsNullOrEmpty(_config.SelectedChromePath) && File.Exists(_config.SelectedChromePath))
         {
+            // Typically, User Data is in the same directory as the executable (e.g., portable installs)
+            // or one level above it.
             DirectoryInfo exeDir = new DirectoryInfo(Path.GetDirectoryName(_config.SelectedChromePath));
-            string potentialPath1 = Path.Combine(exeDir.FullName, "User Data");
-            if (Directory.Exists(potentialPath1)) return potentialPath1;
+            string potentialPath = Path.Combine(exeDir.FullName, "User Data");
+            if (Directory.Exists(potentialPath)) return potentialPath;
 
             if (exeDir.Parent != null)
             {
-                string potentialPath2 = Path.Combine(exeDir.Parent.FullName, "User Data");
-                if (Directory.Exists(potentialPath2)) return potentialPath2;
+                potentialPath = Path.Combine(exeDir.Parent.FullName, "User Data");
+                if (Directory.Exists(potentialPath)) return potentialPath;
             }
         }
+        // Fallback to the default local app data location
         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "User Data");
     }
 
+    #endregion
 
-    // --- Profile Data Management ---
+    #region Profile Data Management (profiles.json)
 
     private void LoadProfiles()
     {
@@ -184,27 +148,27 @@ public class Pro5ChromeManager
         try
         {
             string json = File.ReadAllText(ProfilesFileName);
-            if (string.IsNullOrWhiteSpace(json)) { _profiles = new List<Profile>(); return; }
-
-            if (json.Trim().StartsWith("[") && json.Contains("\"\""))
-            {
-                try
-                {
-                    var stringProfiles = JsonSerializer.Deserialize<List<string>>(json);
-                    if (stringProfiles != null && !stringProfiles.Any(s => s.Contains("{")))
-                    {
-                        _profiles = stringProfiles.Select(name => new Profile { Name = name }).ToList();
-                        SaveProfiles();
-                        return;
-                    }
-                }
-                catch { }
-            }
             _profiles = JsonSerializer.Deserialize<List<Profile>>(json) ?? new List<Profile>();
+        }
+        catch (JsonException)
+        { 
+            // Handle case where profiles.json might be a simple string array from a previous version
+            try
+            {
+                 string json = File.ReadAllText(ProfilesFileName);
+                 var stringProfiles = JsonSerializer.Deserialize<List<string>>(json);
+                 _profiles = stringProfiles.Select(name => new Profile { Name = name }).ToList();
+                 SaveProfiles(); // Resave in the new object format
+            }
+            catch (Exception ex2)
+            {
+                MessageBox.Show($"Lỗi khi phân tích profiles.json: {ex2.Message}", "Lỗi đọc file");
+                 _profiles = new List<Profile>();
+            }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Lỗi khi đọc file profiles.json: {ex.Message}", "Lỗi đọc file");
+            MessageBox.Show($"Lỗi không xác định khi đọc profiles.json: {ex.Message}", "Lỗi đọc file");
             _profiles = new List<Profile>();
         }
     }
@@ -226,19 +190,12 @@ public class Pro5ChromeManager
 
     public Profile GetProfileDetails(string profileName) => _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
 
-    public void AddProfile(string profileName)
-    {
-        if (string.IsNullOrWhiteSpace(profileName) || _profiles.Any(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase))) return;
-        _profiles.Add(new Profile { Name = profileName });
-        SaveProfiles();
-    }
-
-    public int DiscoverAndAddProfiles()
+    public void DiscoverAndAddProfiles()
     {
         string userDataPath = GetEffectiveUserDataPath();
         if (!Directory.Exists(userDataPath)){
             MessageBox.Show($"Không tìm thấy thư mục User Data tại: {userDataPath}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return 0;
+            return;
         }
 
         int newProfilesCount = 0;
@@ -258,20 +215,17 @@ public class Pro5ChromeManager
                 }
             }
 
-            if (newProfilesCount > 0) SaveProfiles();
+            if (newProfilesCount > 0) 
+            {
+                SaveProfiles();
+                MessageBox.Show($"Đã tìm thấy và thêm {newProfilesCount} profile mới.", "Thành công");
+            }
+            else
+            {
+                MessageBox.Show("Không tìm thấy profile mới nào.", "Hoàn tất");
+            }
         }
         catch (Exception ex) { MessageBox.Show($"Lỗi khi quét thư mục profile: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-        return newProfilesCount;
-    }
-
-    public void DeleteProfile(string profileName)
-    {
-        var profileToRemove = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
-        if (profileToRemove != null && MessageBox.Show($"Bạn có chắc chắn muốn xóa profile '{profileName}'?", "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
-        {
-            _profiles.Remove(profileToRemove);
-            SaveProfiles();
-        }
     }
 
     public void UpdateProfileDetails(string profileName, string email, string password, string otp)
@@ -279,6 +233,7 @@ public class Pro5ChromeManager
         var profileToUpdate = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
         if (profileToUpdate == null)
         {
+             // This case should ideally not happen if called from the UI, but as a safeguard:
              profileToUpdate = new Profile { Name = profileName };
             _profiles.Add(profileToUpdate);
         }
@@ -288,12 +243,14 @@ public class Pro5ChromeManager
         SaveProfiles();
     }
 
-    // --- Browser Process & Window Management ---
+    #endregion
+
+    #region Browser Process & Window Management
 
     public void OpenChrome(string profileName, string url = null)
     {
         if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath)){
-            MessageBox.Show("Đường dẫn đến file thực thi của trình duyệt không hợp lệ.", "Lỗi đường dẫn");
+            MessageBox.Show("Vui lòng chọn một đường dẫn trình duyệt hợp lệ trong file config.json hoặc trên giao diện.", "Lỗi đường dẫn");
             return;
         }
         try
@@ -308,41 +265,14 @@ public class Pro5ChromeManager
         catch (Exception ex) { MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}"); }
     }
 
+    // Simplified method that calls the new lean WindowManager method.
     public void CloseProfileWindow(string profileName) 
     { 
-        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.CloseWindowByProfileName(profileName, GetProfiles(), _config.SelectedChromePath); 
-    }
-
-    public void MaximizeProfileWindow(string profileName) 
-    { 
-        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.MaximizeWindowByProfileName(profileName, GetProfiles(), _config.SelectedChromePath); 
-    }
-
-    public void MinimizeProfileWindow(string profileName) 
-    { 
-        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.MinimizeWindowByProfileName(profileName, GetProfiles(), _config.SelectedChromePath); 
-    }
-
-    public void RestoreProfileWindow(string profileName) 
-    { 
-        if (!string.IsNullOrWhiteSpace(profileName)) WindowManager.RestoreWindowByProfileName(profileName, GetProfiles(), _config.SelectedChromePath); 
-    }
-
-    public void CloseAllChrome()
-    {
-        try
+        if (!string.IsNullOrWhiteSpace(profileName))
         {
-            string processName = "chrome";
-            if (!string.IsNullOrEmpty(_config.SelectedChromePath) && File.Exists(_config.SelectedChromePath))
-            {
-                processName = Path.GetFileNameWithoutExtension(_config.SelectedChromePath);
-            }
-
-            foreach (var process in Process.GetProcessesByName(processName))
-            {
-                if (!process.HasExited) process.Kill();
-            }
+             WindowManager.CloseProfileWindow(profileName); 
         }
-        catch (Exception ex) { MessageBox.Show($"Lỗi khi đóng trình duyệt: {ex.Message}"); }
     }
+
+    #endregion
 }

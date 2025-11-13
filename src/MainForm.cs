@@ -1,7 +1,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -12,16 +11,16 @@ public class MainForm : Form
 {
     private Pro5ChromeManager _profileManager;
     private UrlManager _urlManager;
-    private AutomationManager _automationManager; 
-    private System.Windows.Forms.Timer statusUpdateTimer;
+    private AutomationManager _automationManager;
 
     // --- UI Controls ---
     private ComboBox chromePathComboBox;
-    private ListBox profilesListBox, urlsListBox;
-    private TextBox emailTextBox, passwordTextBox, otpTextBox, newUrlTextBox, currentProfileTextBox, closingProfileTextBox;
-    private Button saveProfileButton, addUrlButton, deleteSelectedUrlButton, openUrlWithSelectedProfileButton, deleteAllUrlsButton;
-    private Button arrangeButton, maximizeAllButton, minimizeAllButton, restoreAllButton, closeAllButton, switchTabButton;
-    private Button openSelectedProfileButton, closeSelectedProfileButton, loginGoogleButton;
+    private ListView profilesListView;
+    private ListBox urlsListBox;
+    private TextBox emailTextBox, passwordTextBox, otpTextBox, newUrlTextBox;
+    private Button saveProfileButton, addUrlButton, deleteSelectedUrlButton, deleteAllUrlsButton, loginGoogleButton;
+    private Button minimizeSelectedButton, maximizeSelectedButton, restoreSelectedButton, closeSelectedButton;
+    private Button addPathButton, deletePathButton, discoverProfilesButton; // Renamed for clarity
     private CheckBox alwaysOnTopCheckBox;
     private Label profileCountLabel;
 
@@ -29,247 +28,263 @@ public class MainForm : Form
     {
         _profileManager = new Pro5ChromeManager();
         _urlManager = new UrlManager();
-        _automationManager = new AutomationManager(); 
+        _automationManager = new AutomationManager();
         InitializeComponent();
         this.Load += MainForm_Load;
         WireUpEventHandlers();
     }
 
-    private void WireUpEventHandlers()
-    {
-        // Profile Tab
-        profilesListBox.SelectedIndexChanged += ProfilesListBox_SelectedIndexChanged;
-        saveProfileButton.Click += SaveProfileButton_Click;
-        openSelectedProfileButton.Click += OpenSelectedProfileButton_Click;
-        closeSelectedProfileButton.Click += CloseSelectedProfileButton_Click;
-
-        // URL Tab
-        addUrlButton.Click += AddUrlButton_Click;
-        deleteSelectedUrlButton.Click += DeleteSelectedUrlButton_Click;
-        deleteAllUrlsButton.Click += DeleteAllUrlsButton_Click;
-        openUrlWithSelectedProfileButton.Click += OpenUrlWithSelectedProfileButton_Click;
-        urlsListBox.DoubleClick += OpenUrlWithSelectedProfileButton_Click;
-
-        // Automation Tab
-        loginGoogleButton.Click += LoginGoogleButton_Click;
-
-        // Window Management Tab
-        arrangeButton.Click += (s, e) => WindowManager.ArrangeChromeWindows(2, 10, _profileManager.GetSelectedChromePath());
-        maximizeAllButton.Click += (s, e) => WindowManager.PerformGlobalAction(_profileManager.GetSelectedChromePath(), 3); // 3 = SW_MAXIMIZE
-        minimizeAllButton.Click += (s, e) => WindowManager.PerformGlobalAction(_profileManager.GetSelectedChromePath(), 6); // 6 = SW_MINIMIZE
-        restoreAllButton.Click += (s, e) => WindowManager.PerformGlobalAction(_profileManager.GetSelectedChromePath(), 9); // 9 = SW_RESTORE
-        switchTabButton.Click += (s, e) => WindowManager.CycleToNextChromeWindow(_profileManager.GetSelectedChromePath());
-        closeAllButton.Click += (s, e) => {
-            if (MessageBox.Show("Bạn có chắc chắn muốn đóng TẤT CẢ các cửa sổ trình duyệt không?", "Xác nhận đóng", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
-            {
-                _profileManager.CloseAllChrome();
-            }
-        };
-
-        // Top Bar
-        alwaysOnTopCheckBox.CheckedChanged += AlwaysOnTopCheckBox_CheckedChanged;
-
-        // Timer for status updates
-        statusUpdateTimer = new System.Windows.Forms.Timer();
-        statusUpdateTimer.Interval = 1000; // 1 second
-        statusUpdateTimer.Tick += StatusUpdateTimer_Tick;
-        statusUpdateTimer.Start();
-    }
-
-    private void SafeOpenFile(string fileName)
-    {
-        try
-        {
-            if (!File.Exists(fileName))
-            {
-                 if (fileName.EndsWith(".json")) {
-                    File.WriteAllText(fileName, fileName.Contains("config") ? "{}" : "[]");
-                 } else {
-                    File.Create(fileName).Close(); 
-                 }
-            }
-            Process.Start(new ProcessStartInfo(fileName) { UseShellExecute = true });
-        }
-        catch (Exception ex)
-        { 
-            MessageBox.Show($"Không thể mở file '{fileName}'.\nLỗi: {ex.Message}", "Lỗi Mở File", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-    }
-
     private void InitializeComponent()
     {
-        // This method is now focused purely on layout
         this.Text = "Pro5Chrome Manager by hieuck";
-        this.Size = new Size(1150, 750);
+        this.Size = new Size(1200, 800);
         this.StartPosition = FormStartPosition.CenterScreen;
         this.SuspendLayout();
 
-        Padding controlMargin = new Padding(5);
+        var mainTableLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
+        mainTableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+        mainTableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40));
+        mainTableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        this.Controls.Add(mainTableLayout);
 
-        var topFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 40, Padding = new Padding(5), FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
-        var pathFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Top, Height = 40, Padding = new Padding(5), FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        // Top Bars
+        var topFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(5), FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        var pathFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(5), FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
+        mainTableLayout.Controls.Add(topFlowPanel, 0, 0);
+        mainTableLayout.Controls.Add(pathFlowPanel, 0, 1);
 
-        var openConfigButton = new Button { Text = "Mở config.json", AutoSize = true, Margin = controlMargin };
-        openConfigButton.Click += (s, e) => SafeOpenFile("config.json");
-        var openProfilesJsonButton = new Button { Text = "Mở profiles.json", AutoSize = true, Margin = controlMargin };
-        openProfilesJsonButton.Click += (s, e) => SafeOpenFile("profiles.json");
-        var openUrlJsonButton = new Button { Text = "Mở URL.json", AutoSize = true, Margin = controlMargin };
-        openUrlJsonButton.Click += (s, e) => SafeOpenFile("URL.json");
+        var openConfigButton = new Button { Text = "Mở config.json", AutoSize = true, Margin = new Padding(5) };
+        var openProfilesJsonButton = new Button { Text = "Mở profiles.json", AutoSize = true, Margin = new Padding(5) };
+        var openUrlJsonButton = new Button { Text = "Mở URL.json", AutoSize = true, Margin = new Padding(5) };
         alwaysOnTopCheckBox = new CheckBox { Text = "Luôn trên cùng", AutoSize = true, Margin = new Padding(15, 8, 5, 5) };
         topFlowPanel.Controls.AddRange(new Control[] { openConfigButton, openProfilesJsonButton, openUrlJsonButton, alwaysOnTopCheckBox });
 
         var pathLabel = new Label { Text = "Đường dẫn trình duyệt:", AutoSize = true, Margin = new Padding(0, 8, 0, 0) };
-        chromePathComboBox = new ComboBox { Width = 450, DropDownStyle = ComboBoxStyle.DropDown, Margin = new Padding(5, 5, 0, 0) };
-        var openUserDataButton = new Button { Text = "Mở User Data", AutoSize = true, Margin = controlMargin };
-        var deletePathButton = new Button { Text = "Xóa", AutoSize = true, Margin = controlMargin };
-        var discoverProfilesButton = new Button { Text = "Đọc Profiles", AutoSize = true, Margin = controlMargin };
-        pathFlowPanel.Controls.AddRange(new Control[] { pathLabel, chromePathComboBox, openUserDataButton, deletePathButton, discoverProfilesButton });
+        chromePathComboBox = new ComboBox { Width = 450, DropDownStyle = ComboBoxStyle.DropDownList, Margin = new Padding(5, 5, 0, 0) };
+        addPathButton = new Button { Text = "Thêm...", AutoSize = true, Margin = new Padding(5) };
+        deletePathButton = new Button { Text = "Xóa", AutoSize = true, Margin = new Padding(5) };
+        discoverProfilesButton = new Button { Text = "Quét Profiles", AutoSize = true, Margin = new Padding(5) };
+        pathFlowPanel.Controls.AddRange(new Control[] { pathLabel, chromePathComboBox, addPathButton, deletePathButton, discoverProfilesButton });
 
+        // Main Split Container
         var mainSplitContainer = new SplitContainer { Dock = DockStyle.Fill, SplitterDistance = 350, BorderStyle = BorderStyle.Fixed3D };
-        
-        var profilesGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Danh sách Profiles", Padding = new Padding(10) };
-        profileCountLabel = new Label { Dock = DockStyle.Top, Text = "Số lượng Profiles: 0", Padding = new Padding(0,0,0,5) };
-        profilesListBox = new ListBox { Dock = DockStyle.Fill };
-        profilesGroupBox.Controls.AddRange(new Control[] { profilesListBox, profileCountLabel });
+        mainTableLayout.Controls.Add(mainSplitContainer, 0, 2);
+
+        // Profiles List Panel
+        var profilesGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Danh sách Profiles (Nháy đúp để mở)", Padding = new Padding(10) };
+        profileCountLabel = new Label { Dock = DockStyle.Top, Text = "Số lượng Profiles: 0", Padding = new Padding(0, 0, 0, 5) };
+        profilesListView = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, GridLines = true, MultiSelect = false };
+        profilesListView.Columns.Add("#", 40);
+        profilesListView.Columns.Add("Tên Profile", 250);
+        profilesGroupBox.Controls.AddRange(new Control[] { profilesListView, profileCountLabel });
         mainSplitContainer.Panel1.Controls.Add(profilesGroupBox);
-        mainSplitContainer.Panel1.Padding = new Padding(5);
+
+        // Right Panel (Tabs + Window Management)
+        var rightTableLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
+        rightTableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        rightTableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 70));
+        mainSplitContainer.Panel2.Controls.Add(rightTableLayout);
 
         var mainTabControl = new TabControl { Dock = DockStyle.Fill };
-        mainSplitContainer.Panel2.Controls.Add(mainTabControl);
-        mainSplitContainer.Panel2.Padding = new Padding(5);
+        rightTableLayout.Controls.Add(mainTabControl, 0, 0);
 
-        var detailsTabPage = new TabPage("Chi tiết & Tác vụ");
-        var detailsTablePanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
+        // Window Management Panel
+        var windowActionsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Quản lý Cửa sổ (Profile đã chọn)", Padding = new Padding(10) };
+        var windowActionsFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = true };
+        minimizeSelectedButton = new Button { Text = "Thu nhỏ", AutoSize = true, Margin = new Padding(5) };
+        maximizeSelectedButton = new Button { Text = "Phóng to", AutoSize = true, Margin = new Padding(5) };
+        restoreSelectedButton = new Button { Text = "Khôi phục", AutoSize = true, Margin = new Padding(5) };
+        closeSelectedButton = new Button { Text = "Đóng", AutoSize = true, Margin = new Padding(5), ForeColor = Color.Red };
+        windowActionsFlowPanel.Controls.AddRange(new Control[] { minimizeSelectedButton, maximizeSelectedButton, restoreSelectedButton, closeSelectedButton });
+        windowActionsGroupBox.Controls.Add(windowActionsFlowPanel);
+        rightTableLayout.Controls.Add(windowActionsGroupBox, 0, 1);
+
+        // Tabs
+        InitializeTabs(mainTabControl);
+
+        this.ResumeLayout(false);
+    }
+    
+    private void InitializeTabs(TabControl mainTabControl)
+    {
+        // Details & Automation Tab
+        var detailsTabPage = new TabPage("Chi tiết & Tự động hóa");
+        var detailsTablePanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
         detailsTablePanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 180));
         detailsTablePanel.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         detailsTabPage.Controls.Add(detailsTablePanel);
 
         var profileDetailsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Thông tin Profile", Padding = new Padding(10) };
-        var emailLabel = new Label { Text = "Email:", Location = new Point(15, 30), AutoSize = true };
-        emailTextBox = new TextBox { Location = new Point(100, 27), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 450 };
-        var passwordLabel = new Label { Text = "Password:", Location = new Point(15, 60), AutoSize = true };
-        passwordTextBox = new TextBox { Location = new Point(100, 57), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 450, UseSystemPasswordChar = true };
-        var otpLabel = new Label { Text = "OTP Secret:", Location = new Point(15, 90), AutoSize = true };
-        otpTextBox = new TextBox { Location = new Point(100, 87), Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 450 };
-        saveProfileButton = new Button { Text = "Lưu Thông Tin", Location = new Point(98, 125), Anchor = AnchorStyles.Top | AnchorStyles.Left, AutoSize = true, Enabled = false };
-        profileDetailsGroupBox.Controls.AddRange(new Control[] { emailLabel, emailTextBox, passwordLabel, passwordTextBox, otpLabel, otpTextBox, saveProfileButton });
+        emailTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 450, Location = new Point(100, 27) };
+        passwordTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 450, Location = new Point(100, 57), UseSystemPasswordChar = true };
+        otpTextBox = new TextBox { Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right, Width = 450, Location = new Point(100, 87) };
+        saveProfileButton = new Button { Text = "Lưu Thông Tin", AutoSize = true, Location = new Point(98, 125) };
+        profileDetailsGroupBox.Controls.AddRange(new Control[] { new Label { Text = "Email:", Location = new Point(15, 30), AutoSize = true }, emailTextBox, new Label { Text = "Password:", Location = new Point(15, 60), AutoSize = true }, passwordTextBox, new Label { Text = "OTP Secret:", Location = new Point(15, 90), AutoSize = true }, otpTextBox, saveProfileButton });
         
-        var singleProfileActionsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Tác vụ cho Profile đã chọn", Padding = new Padding(10) };
-        var actionsFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = true };
-        openSelectedProfileButton = new Button { Text = "Mở Profile", AutoSize = true, Margin = controlMargin };
-        closeSelectedProfileButton = new Button { Text = "Đóng Profile", AutoSize = true, Margin = controlMargin };
-        actionsFlowPanel.Controls.AddRange(new Control[] { openSelectedProfileButton, closeSelectedProfileButton });
-        singleProfileActionsGroupBox.Controls.Add(actionsFlowPanel);
-
-        detailsTablePanel.Controls.Add(profileDetailsGroupBox, 0, 0);
-        detailsTablePanel.Controls.Add(singleProfileActionsGroupBox, 0, 1);
+        var automationGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Kịch bản Tự động hóa", Padding = new Padding(20) };
+        loginGoogleButton = new Button { Text = "Tự động Đăng nhập Google", AutoSize = true, Height = 30, Padding = new Padding(5) };
+        automationGroupBox.Controls.Add(loginGoogleButton);
+        
+        detailsTablePanel.Controls.AddRange(new Control[] { profileDetailsGroupBox, automationGroupBox });
         mainTabControl.TabPages.Add(detailsTabPage);
 
+        // URL Management Tab
         var urlTabPage = new TabPage("Quản lý URL");
-        var urlSplitContainer = new SplitContainer { Dock = DockStyle.Fill, Orientation = Orientation.Horizontal, SplitterDistance = 300, BorderStyle = BorderStyle.Fixed3D };
-        urlTabPage.Controls.Add(urlSplitContainer);
-        var urlsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Danh sách URLs", Padding = new Padding(10) };
+        var urlTableLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1 };
+        urlTableLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        urlTableLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 80));
+        urlTabPage.Controls.Add(urlTableLayout);
+
+        var urlsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Danh sách URLs (Nháy đúp để mở)", Padding = new Padding(10) };
         urlsListBox = new ListBox { Dock = DockStyle.Fill };
         urlsGroupBox.Controls.Add(urlsListBox);
-        urlSplitContainer.Panel1.Controls.Add(urlsGroupBox);
+        urlTableLayout.Controls.Add(urlsGroupBox, 0, 0);
+
         var urlActionsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Hành động", Padding = new Padding(10) };
         var urlActionsFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = false };
-        newUrlTextBox = new TextBox { Width = 350, Margin = controlMargin };
-        addUrlButton = new Button { Text = "Thêm URL", AutoSize = true, Margin = controlMargin };
-        deleteSelectedUrlButton = new Button { Text = "Xóa URL đã chọn", AutoSize = true, Margin = controlMargin };
-        deleteAllUrlsButton = new Button { Text = "Xóa tất cả URL", AutoSize = true, Margin = controlMargin, ForeColor = Color.Red };
-        openUrlWithSelectedProfileButton = new Button { Text = "Mở URL bằng Profile đã chọn", AutoSize = true, Margin = new Padding(10, 2, 2, 2) };
+        newUrlTextBox = new TextBox { Width = 350, Margin = new Padding(5) };
+        addUrlButton = new Button { Text = "Thêm URL", AutoSize = true, Margin = new Padding(5) };
+        deleteSelectedUrlButton = new Button { Text = "Xóa URL", AutoSize = true, Margin = new Padding(5) };
+        deleteAllUrlsButton = new Button { Text = "Xóa tất cả", AutoSize = true, Margin = new Padding(5), ForeColor = Color.Red };
         urlActionsFlowPanel.Controls.AddRange(new Control[] { newUrlTextBox, addUrlButton, deleteSelectedUrlButton, deleteAllUrlsButton });
-        var openUrlFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Bottom, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(5), Height = 40 };
-        openUrlFlowPanel.Controls.Add(openUrlWithSelectedProfileButton);
         urlActionsGroupBox.Controls.Add(urlActionsFlowPanel);
-        urlActionsGroupBox.Controls.Add(openUrlFlowPanel);
-        urlSplitContainer.Panel2.Controls.Add(urlActionsGroupBox);
+        urlTableLayout.Controls.Add(urlActionsGroupBox, 0, 1);
         mainTabControl.TabPages.Add(urlTabPage);
+    }
 
-        var automationTabPage = new TabPage("Tự động hóa");
-        var automationGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Kịch bản Tự động hóa", Padding = new Padding(20) };
-        loginGoogleButton = new Button { Text = "Tự động Đăng nhập Google (với Profile đã chọn)", AutoSize = true, Height = 30, Padding = controlMargin };
-        automationGroupBox.Controls.Add(loginGoogleButton);
-        automationTabPage.Controls.Add(automationGroupBox);
-        mainTabControl.TabPages.Add(automationTabPage);
+    private void WireUpEventHandlers()
+    {
+        // Path Management
+        chromePathComboBox.SelectedIndexChanged += ChromePathComboBox_SelectedIndexChanged;
+        addPathButton.Click += AddPathButton_Click;
+        deletePathButton.Click += DeletePathButton_Click;
+        discoverProfilesButton.Click += DiscoverProfilesButton_Click;
 
-        var windowTabPage = new TabPage("Quản lý Cửa sổ");
-        var windowTablePanel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
-        windowTablePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 60F));
-        windowTablePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 40F));
-        windowTabPage.Controls.Add(windowTablePanel);
-        var statusGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Trạng thái Cửa sổ", Padding = new Padding(10) };
-        currentProfileTextBox = new TextBox { Dock = DockStyle.Top, ReadOnly = true, Margin = new Padding(0, 0, 0, 5), PlaceholderText = "Cửa sổ Active..." };
-        closingProfileTextBox = new TextBox { Dock = DockStyle.Fill, ReadOnly = true, Multiline = true, ScrollBars = ScrollBars.Vertical, PlaceholderText = "Các cửa sổ khác..." };
-        statusGroupBox.Controls.AddRange(new Control[] { closingProfileTextBox, currentProfileTextBox });
-        var windowActionsGroupBox = new GroupBox { Dock = DockStyle.Fill, Text = "Hành động Chung", Padding = new Padding(10) };
-        var windowActionsFlowPanel = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight, WrapContents = true };
-        arrangeButton = new Button { Text = "Sắp xếp", AutoSize = true, Margin = controlMargin };
-        maximizeAllButton = new Button { Text = "Phóng to Tất cả", AutoSize = true, Margin = controlMargin };
-        minimizeAllButton = new Button { Text = "Thu nhỏ Tất cả", AutoSize = true, Margin = controlMargin };
-        restoreAllButton = new Button { Text = "Khôi phục Tất cả", AutoSize = true, Margin = controlMargin };
-        switchTabButton = new Button { Text = "Chuyển cửa sổ", AutoSize = true, Margin = controlMargin };
-        closeAllButton = new Button { Text = "Đóng Tất cả", AutoSize = true, Margin = controlMargin, ForeColor = Color.Red };
-        windowActionsFlowPanel.Controls.AddRange(new Control[] { arrangeButton, maximizeAllButton, minimizeAllButton, restoreAllButton, switchTabButton, closeAllButton });
-        windowActionsGroupBox.Controls.Add(windowActionsFlowPanel);
-        windowTablePanel.Controls.Add(statusGroupBox, 0, 0);
-        windowTablePanel.Controls.Add(windowActionsGroupBox, 0, 1);
-        mainTabControl.TabPages.Add(windowTabPage);
+        // Profile List
+        profilesListView.SelectedIndexChanged += ProfilesListView_SelectedIndexChanged;
+        profilesListView.DoubleClick += (s, e) => OpenSelectedProfile();
 
-        this.Controls.AddRange(new Control[] { mainSplitContainer, pathFlowPanel, topFlowPanel });
-        this.ResumeLayout(false);
+        // Profile Details & Automation
+        saveProfileButton.Click += SaveProfileButton_Click;
+        loginGoogleButton.Click += LoginGoogleButton_Click;
+
+        // URL Management
+        addUrlButton.Click += AddUrlButton_Click;
+        deleteSelectedUrlButton.Click += DeleteSelectedUrlButton_Click;
+        deleteAllUrlsButton.Click += DeleteAllUrlsButton_Click;
+        urlsListBox.DoubleClick += OpenUrlWithSelectedProfile_DoubleClick;
+
+        // Window Management
+        minimizeSelectedButton.Click += (s, e) => WindowManager.PerformActionOnProfileWindow(GetSelectedProfileName(), WindowManager.SW_MINIMIZE);
+        maximizeSelectedButton.Click += (s, e) => WindowManager.PerformActionOnProfileWindow(GetSelectedProfileName(), WindowManager.SW_MAXIMIZE);
+        restoreSelectedButton.Click += (s, e) => WindowManager.PerformActionOnProfileWindow(GetSelectedProfileName(), WindowManager.SW_RESTORE);
+        closeSelectedButton.Click += (s, e) => _profileManager.CloseProfileWindow(GetSelectedProfileName());
+
+        // General
+        alwaysOnTopCheckBox.CheckedChanged += AlwaysOnTopCheckBox_CheckedChanged;
+        openConfigButton.Click += (s, e) => SafeOpenFile("config.json");
+        openProfilesJsonButton.Click += (s, e) => SafeOpenFile("profiles.json");
+        openUrlJsonButton.Click += (s, e) => SafeOpenFile("URL.json");
     }
 
     private void MainForm_Load(object sender, EventArgs e)
     {
         this.TopMost = _profileManager.IsAlwaysOnTop();
         alwaysOnTopCheckBox.Checked = _profileManager.IsAlwaysOnTop();
-
-        RefreshProfileLists();
-        RefreshUrlList();
         RefreshChromePathList();
+        RefreshProfileList();
+        RefreshUrlList();
+        SetControlStates();
     }
 
-    private void RefreshProfileLists()
+    // --- Data & UI Refresh Methods ---
+    private void RefreshChromePathList()
     {
-        string selectedProfile = profilesListBox.SelectedItem as string;
+        // Unsubscribe to prevent event firing during refresh
+        chromePathComboBox.SelectedIndexChanged -= ChromePathComboBox_SelectedIndexChanged;
+
+        var allPaths = _profileManager.GetAllChromePaths();
+        var selectedPath = _profileManager.GetSelectedChromePath();
+        chromePathComboBox.DataSource = allPaths;
+        chromePathComboBox.SelectedItem = selectedPath;
+
+        // Resubscribe
+        chromePathComboBox.SelectedIndexChanged += ChromePathComboBox_SelectedIndexChanged;
+    }
+
+    private void RefreshProfileList()
+    {
+        string selectedProfile = GetSelectedProfileName();
+        profilesListView.Items.Clear();
         var profiles = _profileManager.GetProfiles();
-        profilesListBox.DataSource = profiles;
-        profileCountLabel.Text = $"Số lượng Profiles: {profiles.Count}";
-        if (selectedProfile != null && profiles.Contains(selectedProfile))
+        for (int i = 0; i < profiles.Count; i++)
         {
-            profilesListBox.SelectedItem = selectedProfile;
+            var item = new ListViewItem((i + 1).ToString());
+            item.SubItems.Add(profiles[i]);
+            profilesListView.Items.Add(item);
+            if (profiles[i] == selectedProfile)
+            {
+                item.Selected = true;
+            }
         }
+        profileCountLabel.Text = $"Số lượng Profiles: {profiles.Count}";
+        if (profilesListView.SelectedItems.Count > 0) profilesListView.Focus();
+        SetControlStates();
     }
 
     private void RefreshUrlList()
     {
-        string selectedUrl = urlsListBox.SelectedItem as string;
-        var urls = _urlManager.GetUrls();
-        urlsListBox.DataSource = null;
-        urlsListBox.DataSource = urls;
-        if (selectedUrl != null && urls.Contains(selectedUrl))
+        urlsListBox.DataSource = _urlManager.GetUrls();
+    }
+
+    // --- Event Handlers ---
+    private void ChromePathComboBox_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (chromePathComboBox.SelectedItem is string selectedPath)
         {
-            urlsListBox.SelectedItem = selectedUrl;
+            _profileManager.SetSelectedChromePath(selectedPath);
+            RefreshProfileList(); // Profiles depend on the selected path
+        }
+    }
+
+    private void AddPathButton_Click(object sender, EventArgs e)
+    {
+        using (var ofd = new OpenFileDialog())
+        {
+            ofd.Filter = "Browser Executable|chrome.exe;centbrowser.exe|All files (*.*)|*.*";
+            ofd.Title = "Chọn file thực thi của trình duyệt (chrome.exe hoặc centbrowser.exe)";
+            if (ofd.ShowDialog() == DialogResult.OK)
+            {
+                _profileManager.AddChromePath(ofd.FileName);
+                _profileManager.SetSelectedChromePath(ofd.FileName);
+                RefreshChromePathList();
+            }
+        }
+    }
+
+    private void DeletePathButton_Click(object sender, EventArgs e)
+    {
+        if (chromePathComboBox.SelectedItem is string selectedPath)
+        {
+            if (MessageBox.Show($"Bạn có chắc chắn muốn xóa đường dẫn '{selectedPath}'?", "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            {
+                 _profileManager.DeleteChromePath(selectedPath);
+                 RefreshChromePathList();
+            }
         }
     }
     
-    private void RefreshChromePathList() 
+    private void DiscoverProfilesButton_Click(object sender, EventArgs e)
     {
-        // Logic will be added later
+        _profileManager.DiscoverAndAddProfiles();
+        RefreshProfileList();
     }
 
-    private void ProfilesListBox_SelectedIndexChanged(object sender, EventArgs e)
+    private void ProfilesListView_SelectedIndexChanged(object sender, EventArgs e)
     {
-        bool isProfileSelected = profilesListBox.SelectedItem is string;
-        saveProfileButton.Enabled = isProfileSelected;
-        openSelectedProfileButton.Enabled = isProfileSelected;
-        closeSelectedProfileButton.Enabled = isProfileSelected;
-        
-        if (isProfileSelected)
+        string profileName = GetSelectedProfileName();
+        if (profileName != null)
         {
-            string profileName = profilesListBox.SelectedItem.ToString();
             var profileDetails = _profileManager.GetProfileDetails(profileName);
             emailTextBox.Text = profileDetails?.Email ?? "";
             passwordTextBox.Text = profileDetails?.Password ?? "";
@@ -281,130 +296,97 @@ public class MainForm : Form
             passwordTextBox.Text = "";
             otpTextBox.Text = "";
         }
+        SetControlStates();
     }
 
     private void SaveProfileButton_Click(object sender, EventArgs e)
     {
-        if (profilesListBox.SelectedItem is string profileName)
+        string profileName = GetSelectedProfileName();
+        if (profileName != null)
         {
             _profileManager.UpdateProfileDetails(profileName, emailTextBox.Text, passwordTextBox.Text, otpTextBox.Text);
             MessageBox.Show("Đã lưu thông tin thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 
-    private void OpenSelectedProfileButton_Click(object sender, EventArgs e)
+    private void OpenSelectedProfile()
     {
-        if (profilesListBox.SelectedItem is string profileName)
-        {
-            _profileManager.OpenChrome(profileName);
-        }
-    }
-
-    private void CloseSelectedProfileButton_Click(object sender, EventArgs e)
-    {
-        if (profilesListBox.SelectedItem is string profileName)
-        {
-            _profileManager.CloseProfileWindow(profileName);
-        }
+        string profileName = GetSelectedProfileName();
+        if (profileName != null) _profileManager.OpenChrome(profileName);
     }
 
     private void AddUrlButton_Click(object sender, EventArgs e)
     {
         string newUrl = newUrlTextBox.Text.Trim();
-        if (!string.IsNullOrEmpty(newUrl))
-        {
-            _urlManager.AddUrl(newUrl);
-            newUrlTextBox.Clear();
-            RefreshUrlList();
-        }
+        if (!string.IsNullOrEmpty(newUrl)) { _urlManager.AddUrl(newUrl); newUrlTextBox.Clear(); RefreshUrlList(); }
     }
 
     private void DeleteSelectedUrlButton_Click(object sender, EventArgs e)
     {
-        if (urlsListBox.SelectedItem is string selectedUrl)
-        {
-            _urlManager.DeleteUrl(selectedUrl);
-            RefreshUrlList();
-        }
-        else
-        {
-            MessageBox.Show("Vui lòng chọn một URL để xóa.", "Chưa chọn URL", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        }
+        if (urlsListBox.SelectedItem is string selectedUrl) { _urlManager.DeleteUrl(selectedUrl); RefreshUrlList(); }
     }
 
     private void DeleteAllUrlsButton_Click(object sender, EventArgs e)
     {
-        if (MessageBox.Show("Bạn có chắc chắn muốn xóa TẤT CẢ các URL đã lưu không?", "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
-        {
-            _urlManager.ClearAllUrls();
-            RefreshUrlList();
-        }
+        if (MessageBox.Show("Bạn có chắc chắn muốn xóa TẤT CẢ các URL?", "Xác nhận xóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+        { _urlManager.ClearAllUrls(); RefreshUrlList(); }
     }
 
-    private void OpenUrlWithSelectedProfileButton_Click(object sender, EventArgs e)
+    private void OpenUrlWithSelectedProfile_DoubleClick(object sender, EventArgs e)
     {
-        if (profilesListBox.SelectedItem == null)
-        {
-            MessageBox.Show("Vui lòng chọn một Profile từ danh sách bên trái.", "Chưa chọn Profile", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-        if (urlsListBox.SelectedItem == null)
-        {
-            MessageBox.Show("Vui lòng chọn một URL từ danh sách.", "Chưa chọn URL", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        string profileName = profilesListBox.SelectedItem.ToString();
-        string url = urlsListBox.SelectedItem.ToString();
-        _profileManager.OpenChrome(profileName, url);
+        string profileName = GetSelectedProfileName();
+        if (profileName == null) { MessageBox.Show("Vui lòng chọn một Profile.", "Chưa chọn Profile", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
+        if (urlsListBox.SelectedItem is string url) _profileManager.OpenChrome(profileName, url);
     }
-    
+
     private async void LoginGoogleButton_Click(object sender, EventArgs e)
     {
-        if (profilesListBox.SelectedItem == null)
-        {
-            MessageBox.Show("Vui lòng chọn một profile từ danh sách bên trái.", "Chưa chọn Profile", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-        
-        string profileName = profilesListBox.SelectedItem.ToString();
+        string profileName = GetSelectedProfileName();
+        if (profileName == null) return;
         var profileDetails = _profileManager.GetProfileDetails(profileName);
-
         if (profileDetails == null || string.IsNullOrWhiteSpace(profileDetails.Email) || string.IsNullOrWhiteSpace(profileDetails.Password))
-        {
-            MessageBox.Show("Vui lòng lưu Email và Mật khẩu cho profile này trong tab 'Chi tiết & Tác vụ' trước khi tự động đăng nhập.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-
-        string userDataPath = _profileManager.GetEffectiveUserDataPath();
-        string chromeDriverPath = Path.GetDirectoryName(Application.ExecutablePath);
-
+        { MessageBox.Show("Vui lòng lưu Email và Mật khẩu cho profile này.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
         try
         {
-            this.Enabled = false; // Disable form during automation
-            await _automationManager.LoginToGoogleAsync(profileName, userDataPath, chromeDriverPath, profileDetails.Email, profileDetails.Password);
-            MessageBox.Show($"Quá trình tự động đăng nhập cho profile '{profileName}' đã hoàn tất.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            this.Enabled = false;
+            await _automationManager.LoginToGoogleAsync(profileName, _profileManager.GetEffectiveUserDataPath(), Path.GetDirectoryName(Application.ExecutablePath), profileDetails.Email, profileDetails.Password);
+            MessageBox.Show($"Quá trình tự động đăng nhập cho '{profileName}' đã hoàn tất.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
-        catch (Exception ex)
-        { 
-            MessageBox.Show($"Đã xảy ra lỗi trong quá trình tự động hóa:\n{ex.Message}", "Lỗi Tự động hóa", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        finally
-        {
-            this.Enabled = true; // Re-enable form
-        }
-    }
-
-    private void StatusUpdateTimer_Tick(object sender, EventArgs e)
-    {
-        var (activeTitle, inactiveTitles) = WindowManager.GetChromeWindowStates(_profileManager.GetSelectedChromePath());
-        currentProfileTextBox.Text = activeTitle;
-        closingProfileTextBox.Text = string.Join(Environment.NewLine, inactiveTitles);
+        catch (Exception ex) { MessageBox.Show($"Đã xảy ra lỗi: {ex.Message}", "Lỗi Tự động hóa", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+        finally { this.Enabled = true; }
     }
 
     private void AlwaysOnTopCheckBox_CheckedChanged(object sender, EventArgs e)
     {
-        _profileManager.SetAlwaysOnTop(alwaysOnTopCheckBox.Checked);
         this.TopMost = alwaysOnTopCheckBox.Checked;
+        _profileManager.SetAlwaysOnTop(alwaysOnTopCheckBox.Checked);
+    }
+
+    // --- Helper Methods ---
+    private void SetControlStates()
+    {
+        bool isProfileSelected = GetSelectedProfileName() != null;
+        saveProfileButton.Enabled = isProfileSelected;
+        loginGoogleButton.Enabled = isProfileSelected;
+        minimizeSelectedButton.Enabled = isProfileSelected;
+        maximizeSelectedButton.Enabled = isProfileSelected;
+        restoreSelectedButton.Enabled = isProfileSelected;
+        closeSelectedButton.Enabled = isProfileSelected;
+    }
+
+    private string GetSelectedProfileName()
+    {
+        return profilesListView.SelectedItems.Count > 0 ? profilesListView.SelectedItems[0].SubItems[1].Text : null;
+    }
+
+    private void SafeOpenFile(string fileName)
+    {
+        try
+        {
+            if (!File.Exists(fileName) && fileName.EndsWith(".json"))
+                File.WriteAllText(fileName, fileName.Contains("config") ? "{}" : "[]");
+            Process.Start(new ProcessStartInfo(fileName) { UseShellExecute = true });
+        }
+        catch (Exception ex) { MessageBox.Show($"Không thể mở file '{fileName}'. Lỗi: {ex.Message}", "Lỗi Mở File", MessageBoxButtons.OK, MessageBoxIcon.Error); }
     }
 }
