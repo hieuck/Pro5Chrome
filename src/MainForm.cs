@@ -29,13 +29,11 @@ public class MainForm : Form
     {
         _manager = new Pro5ChromeManager();
         _urlManager = new UrlManager();
-        // _automationManager = new AutomationManager(); // Removed
         InitializeComponent();
         this.Load += MainForm_Load;
         WireUpEventHandlers();
     }
 
-    // ... (InitializeComponent and other UI setup methods remain the same) ...
     private void InitializeComponent()
     {
         this.Text = "Pro5Chrome Manager by hieuck";
@@ -116,7 +114,7 @@ public class MainForm : Form
         passwordTextBox = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(5), UseSystemPasswordChar = true };
         otpTextBox = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(5), UseSystemPasswordChar = true };
         saveProfileButton = new Button { Text = "Lưu Thông Tin", Anchor = AnchorStyles.None, AutoSize = true, Margin = new Padding(5) };
-        loginGoogleButton = new Button { Text = "Tự động Đăng nhập Google", Dock = DockStyle.Fill, Height = 40, Margin = new Padding(5) };
+        loginGoogleButton = new Button { Text = "Tự động Đăng nhập/Kháng nghị", Dock = DockStyle.Fill, Height = 40, Margin = new Padding(5) };
 
         detailsLayout.Controls.Add(new Label { Text = "Email:", AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(3) }, 0, 0);
         detailsLayout.Controls.Add(emailTextBox, 1, 0);
@@ -415,7 +413,7 @@ CẢNH BÁO: Việc xóa thư mục dữ liệu không thể hoàn tác.";
         saveProfileButton.Enabled = isProfileSelected;
         loginGoogleButton.Enabled = isProfileSelected;
         minimizeSelectedButton.Enabled = isProfileSelected;
-        maximizeSelectedButton.Enabled = isProfileSelected;
+        maximizeSelectedButton.Enabled = is-selected;
         restoreSelectedButton.Enabled = isProfileSelected;
         closeSelectedButton.Enabled = isProfileSelected;
     }
