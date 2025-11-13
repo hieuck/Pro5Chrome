@@ -88,7 +88,6 @@ public class Pro5ChromeManager
 
     #region Automation
 
-    // MODIFIED: Corrected the method call to include userDataPath and profileName
     public void AutomateLogin(string profileName)
     {
         var profileDetails = GetProfileDetails(profileName);
@@ -109,7 +108,6 @@ public class Pro5ChromeManager
         }
     }
 
-    // MODIFIED: Corrected the order of arguments in the method call
     public void WarmUpAccount(string profileName)
     {
         if (string.IsNullOrEmpty(profileName))
@@ -121,7 +119,6 @@ public class Pro5ChromeManager
         try
         {
             string userDataPath = GetEffectiveUserDataPath();
-            // The original call had the arguments swapped. This is the correct order.
             SeleniumManager.WarmUpAccount(userDataPath, profileName);
         }
         catch (Exception ex)
@@ -225,16 +222,25 @@ public class Pro5ChromeManager
 
     public void OpenChrome(string profileName, string url = null)
     {
-        if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath)) { MessageBox.Show("Vui lòng chọn một đường dẫn trình duyệt hợp lệ."); return; }
+        if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath)) { 
+            MessageBox.Show("Vui lòng chọn một đường dẫn trình duyệt hợp lệ."); 
+            return; 
+        }
         try
         {
             string arguments = $"--profile-directory="{profileName}" ";
-            if (!string.IsNullOrEmpty(url)) { arguments += $""{url}""; }
+            if (!string.IsNullOrEmpty(url)) { 
+                arguments += $""{url}""; 
+            }
             ProcessStartInfo startInfo = new ProcessStartInfo(_config.SelectedChromePath, arguments);
             Process proc = Process.Start(startInfo);
-            if (proc != null) { WindowManager.RegisterProfileProcess(profileName, proc); }
+            if (proc != null) { 
+                WindowManager.RegisterProfileProcess(profileName, proc); 
+            }
         }
-        catch (Exception ex) { MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}"); }
+        catch (Exception ex) { 
+            MessageBox.Show($"Không thể mở trình duyệt: {ex.Message}"); 
+        }
     }
 
     public void CloseProfileWindow(string profileName)
