@@ -4,38 +4,32 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Windows.Forms;
 
-/// <summary>
-/// Defines the structure for the config.json file.
-/// </summary>
-public class ChromeConfig
+// Defines the structure for a profile, holding its name, email, and password.
+public class Profile
 {
-    [JsonProperty("selected_chrome_path")]
-    public string SelectedChromePath { get; set; }
-
-    [JsonProperty("chrome_paths")]
-    public List<string> ChromePaths { get; set; }
-
-    public ChromeConfig()
-    {
-        ChromePaths = new List<string>();
-    }
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public string Password { get; set; }
 }
 
 public class Pro5ChromeManager
 {
-    // --- Constants ---
-    private const string CONFIG_FILE = "config.json";
-    private const string PROFILES_FILE = "profiles.json";
-    public const string GoogleLoginUrl = "https://accounts.google.com/";
-    private const string DefaultChromePath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
+    private const string ConfigFileName = "config.json";
+    private const string ProfilesFileName = "profiles.json";
+    public const string GoogleLoginUrl = "https://accounts.google.com";
 
-    // --- Private Fields ---
-    private ChromeConfig _config;
-    private List<string> _profiles;
+    private List<Profile> _profiles = new List<Profile>();
+    private Config _config = new Config();
 
-    // --- Constructor ---
+    private class Config
+    {
+        public List<string> ChromePaths { get; set; } = new List<string>();
+        public string SelectedChromePath { get; set; }
+    }
+
     public Pro5ChromeManager()
     {
         LoadConfig();
@@ -43,62 +37,45 @@ public class Pro5ChromeManager
     }
 
     // --- Configuration Management ---
+
     private void LoadConfig()
     {
-        if (File.Exists(CONFIG_FILE))
+        if (File.Exists(ConfigFileName))
         {
             try
             {
-                _config = JsonConvert.DeserializeObject<ChromeConfig>(File.ReadAllText(CONFIG_FILE));
-                // Handle case where file exists but is empty or invalid
-                if (_config == null || _config.ChromePaths == null)
-                {
-                    InitializeDefaultConfig();
-                }
-                // Ensure there's always at least one path
-                if (_config.ChromePaths.Count == 0)
-                {
-                     _config.ChromePaths.Add(DefaultChromePath);
-                }
-                // Ensure a path is selected
-                if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !_config.ChromePaths.Contains(_config.SelectedChromePath))
-                {
-                    _config.SelectedChromePath = _config.ChromePaths[0];
-                }
+                string json = File.ReadAllText(ConfigFileName);
+                _config = JsonSerializer.Deserialize<Config>(json) ?? new Config();
             }
-            catch (JsonException)
+            catch (Exception ex)
             {
-                // If parsing fails (e.g., old format), create a new config
-                InitializeDefaultConfig();
+                MessageBox.Show($"Lỗi khi đọc file config.json: {ex.Message}");
+                _config = new Config();
             }
         }
-        else
-        {
-            InitializeDefaultConfig();
-        }
-        SaveConfig(); // Save to ensure file is created and format is updated
-    }
-
-    private void InitializeDefaultConfig()
-    {
-        _config = new ChromeConfig();
-        _config.ChromePaths.Add(DefaultChromePath);
-        _config.SelectedChromePath = DefaultChromePath;
     }
 
     private void SaveConfig()
     {
-        File.WriteAllText(CONFIG_FILE, JsonConvert.SerializeObject(_config, Formatting.Indented));
+        try
+        {
+            string json = JsonSerializer.Serialize(_config, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(ConfigFileName, json);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Lỗi khi lưu file config.json: {ex.Message}");
+        }
     }
 
-    public List<string> GetChromePaths() => _config.ChromePaths.ToList();
+    public List<string> GetChromePaths() => _config.ChromePaths;
     public string GetSelectedChromePath() => _config.SelectedChromePath;
 
     public void AddAndSelectChromePath(string path)
     {
-        if (string.IsNullOrWhiteSpace(path)) return;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
         if (!_config.ChromePaths.Contains(path))
-        { 
+        {
             _config.ChromePaths.Add(path);
         }
         _config.SelectedChromePath = path;
@@ -110,79 +87,140 @@ public class Pro5ChromeManager
         if (_config.ChromePaths.Contains(path))
         {
             _config.ChromePaths.Remove(path);
-            // If the deleted path was the selected one, select another one
             if (_config.SelectedChromePath == path)
             {
-                _config.SelectedChromePath = _config.ChromePaths.FirstOrDefault() ?? string.Empty;
+                _config.SelectedChromePath = _config.ChromePaths.FirstOrDefault();
             }
             SaveConfig();
-        }
-    }
-
-    // --- Profile Management ---
-    private void LoadProfiles()
-    {
-        if (File.Exists(PROFILES_FILE))
-        {
-            _profiles = JsonConvert.DeserializeObject<List<string>>(File.ReadAllText(PROFILES_FILE));
-        }
-        else
-        {
-            _profiles = new List<string>();
-        }
-    }
-
-    private void SaveProfiles()
-    {
-        File.WriteAllText(PROFILES_FILE, JsonConvert.SerializeObject(_profiles, Formatting.Indented));
-    }
-
-    public List<string> GetProfiles()
-    {
-        return _profiles.ToList(); // Return a copy
-    }
-
-    public void AddProfile(string profileName)
-    {
-        if (!_profiles.Contains(profileName))
-        {
-            _profiles.Add(profileName);
-            SaveProfiles();
-        }
-    }
-
-    public void DeleteProfile(string profileName)
-    {
-        if (_profiles.Contains(profileName))
-        {
-            _profiles.Remove(profileName);
-            SaveProfiles();
         }
     }
     
     public static string GetUserDataPath()
     {
-        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        return Path.Combine(localAppData, "Google", "Chrome", "User Data");
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Google", "Chrome", "User Data");
+    }
+
+    // --- Profile Data Management ---
+
+    private void LoadProfiles()
+    {
+        if (!File.Exists(ProfilesFileName))
+        {
+            _profiles = new List<Profile>();
+            return;
+        }
+
+        try
+        {
+            string json = File.ReadAllText(ProfilesFileName);
+            // Handle old format (List<string>)
+            if (json.Trim().StartsWith("[") && json.Contains("\""))
+            {
+                try
+                {
+                    var stringProfiles = JsonSerializer.Deserialize<List<string>>(json);
+                    _profiles = stringProfiles.Select(name => new Profile { Name = name }).ToList();
+                    SaveProfiles(); // Resave in new format
+                }
+                catch
+                {
+                     // It might be the new format after all, so try that.
+                     _profiles = JsonSerializer.Deserialize<List<Profile>>(json) ?? new List<Profile>();
+                }
+            }
+            else
+            {
+                 _profiles = JsonSerializer.Deserialize<List<Profile>>(json) ?? new List<Profile>();
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Lỗi khi đọc file profiles.json: {ex.Message}");
+            _profiles = new List<Profile>();
+        }
+    }
+
+    private void SaveProfiles()
+    {
+        try
+        {
+            string json = JsonSerializer.Serialize(_profiles, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(ProfilesFileName, json);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Lỗi khi lưu file profiles.json: {ex.Message}");
+        }
+    }
+
+    public List<string> GetProfiles()
+    {
+        return _profiles.Select(p => p.Name).ToList();
+    }
+
+    public Profile GetProfileDetails(string profileName)
+    {
+        return _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public void AddProfile(string profileName)
+    {
+        if (string.IsNullOrWhiteSpace(profileName) || _profiles.Any(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase)))
+            return;
+
+        _profiles.Add(new Profile { Name = profileName });
+        SaveProfiles();
+    }
+
+    public void DeleteProfile(string profileName)
+    {
+        var profileToRemove = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
+        if (profileToRemove != null)
+        {
+            _profiles.Remove(profileToRemove);
+            SaveProfiles();
+        }
+    }
+
+    public void UpdateProfileDetails(string profileName, string email, string password)
+    {
+        var profileToUpdate = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
+        if (profileToUpdate == null)
+        {
+             // If profile doesn't exist, create it.
+             profileToUpdate = new Profile { Name = profileName };
+            _profiles.Add(profileToUpdate);
+        }
+
+        profileToUpdate.Email = email;
+        profileToUpdate.Password = password;
+        SaveProfiles();
     }
 
     // --- Chrome Process Management ---
+
     public void OpenChrome(string profileName, string url = null)
     {
-        AddProfile(profileName); // Ensure profile exists in our list before opening
-        
+        if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath))
+        {
+            MessageBox.Show("Vui lòng chọn đường dẫn đến file chrome.exe hợp lệ trong file config.json.");
+            return;
+        }
+
         string arguments = $"--profile-directory={profileName}";
         if (!string.IsNullOrEmpty(url))
         {
             arguments += $" \"{url}\"";
         }
 
-        ProcessStartInfo startInfo = new ProcessStartInfo
+        try
         {
-            FileName = _config.SelectedChromePath, // Use the selected path
-            Arguments = arguments
-        };
-        Process.Start(startInfo);
+            Process.Start(_config.SelectedChromePath, arguments);
+        }
+        catch (Exception ex)
+        { 
+            MessageBox.Show($"Không thể mở Chrome: {ex.Message}");
+        }
     }
 
     public void CloseAllChrome()
@@ -191,12 +229,9 @@ public class Pro5ChromeManager
         {
             try
             {
-                process.Kill();
+                if (!process.HasExited) process.Kill();
             }
-            catch (Exception)
-            {
-                // Ignore errors if the process has already exited
-            }
+            catch { }
         }
     }
 }
