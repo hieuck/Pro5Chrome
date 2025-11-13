@@ -20,7 +20,8 @@ public class MainForm : Form
     private TextBox emailTextBox, passwordTextBox, otpTextBox, newUrlTextBox;
     private Button saveProfileButton, addUrlButton, deleteSelectedUrlButton, deleteAllUrlsButton, loginGoogleButton;
     private Button minimizeSelectedButton, maximizeSelectedButton, restoreSelectedButton, closeSelectedButton;
-    private Button addPathButton, deletePathButton, discoverProfilesButton; // Renamed for clarity
+    private Button addPathButton, deletePathButton, discoverProfilesButton;
+    private Button openConfigButton, openProfilesJsonButton, openUrlJsonButton; // FIX: Declare as class fields
     private CheckBox alwaysOnTopCheckBox;
     private Label profileCountLabel;
 
@@ -53,9 +54,10 @@ public class MainForm : Form
         mainTableLayout.Controls.Add(topFlowPanel, 0, 0);
         mainTableLayout.Controls.Add(pathFlowPanel, 0, 1);
 
-        var openConfigButton = new Button { Text = "Mở config.json", AutoSize = true, Margin = new Padding(5) };
-        var openProfilesJsonButton = new Button { Text = "Mở profiles.json", AutoSize = true, Margin = new Padding(5) };
-        var openUrlJsonButton = new Button { Text = "Mở URL.json", AutoSize = true, Margin = new Padding(5) };
+        // FIX: Initialize class fields, not local variables
+        openConfigButton = new Button { Text = "Mở config.json", AutoSize = true, Margin = new Padding(5) };
+        openProfilesJsonButton = new Button { Text = "Mở profiles.json", AutoSize = true, Margin = new Padding(5) };
+        openUrlJsonButton = new Button { Text = "Mở URL.json", AutoSize = true, Margin = new Padding(5) };
         alwaysOnTopCheckBox = new CheckBox { Text = "Luôn trên cùng", AutoSize = true, Margin = new Padding(15, 8, 5, 5) };
         topFlowPanel.Controls.AddRange(new Control[] { openConfigButton, openProfilesJsonButton, openUrlJsonButton, alwaysOnTopCheckBox });
 
