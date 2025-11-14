@@ -96,6 +96,7 @@ public class Pro5ChromeManager
     public void LoginGoogle(string profileName)
     {
         var profileDetails = GetProfile(profileName);
+        var chromePath = GetSelectedChromePath();
         if (profileDetails == null || string.IsNullOrEmpty(profileDetails.Email) || string.IsNullOrEmpty(profileDetails.Password))
         {
             _log("Vui lòng lưu email và mật khẩu cho profile này trước khi tự động đăng nhập.");
@@ -105,19 +106,20 @@ public class Pro5ChromeManager
         try
         {
             string userDataPath = GetEffectiveUserDataPath();
-            _log($"Bắt đầu đăng nhập cho profile '{profileName}'...");
-            SeleniumManager.LoginGoogle(userDataPath, profileName, profileDetails.Email, profileDetails.Password, profileDetails.OtpSecret);
+            _log($"Bắt đầu đăng nhập Google cho profile: {profileName}");
+            SeleniumManager.LoginGoogle(chromePath, userDataPath, profileName, profileDetails.Email, profileDetails.Password, profileDetails.OtpSecret);
             _log("Quá trình đăng nhập/kháng nghị đã được Selenium xử lý.");
         }
         catch (Exception ex)
         {
-            _log($"LỖI khi tự động đăng nhập cho '{profileName}': {ex.Message}");
+            _log($"LỖI khi đăng nhập Google cho {profileName}: {ex.Message}");
             throw; // Re-throw to UI
         }
     }
 
     public void WarmUpAccount(string profileName)
     {
+        var chromePath = GetSelectedChromePath();
         if (string.IsNullOrEmpty(profileName))
         {
              _log("Profile không được chọn để thực hiện hành động.");
@@ -127,7 +129,7 @@ public class Pro5ChromeManager
         try
         {
             string userDataPath = GetEffectiveUserDataPath();
-            SeleniumManager.WarmUpAccount(userDataPath, profileName);
+            SeleniumManager.WarmUpAccount(chromePath, userDataPath, profileName);
         }
         catch (Exception ex)
         {
@@ -224,19 +226,45 @@ public class Pro5ChromeManager
         {
             string firstUrl = urls?.FirstOrDefault() ?? "";
             string arguments = $"--profile-directory=\"{profileName}\" \"{firstUrl}\"";
-            
+
             _log($"Đang mở profile '{profileName}'...");
 
-            ProcessStartInfo startInfo = new ProcessStartInfo(chromePath, arguments);
-            Process proc = Process.Start(startInfo);
-            if (proc != null)
-            {
-                WindowManager.RegisterProfileProcess(profileName, proc);
-            }
+            Process.Start(new ProcessStartInfo(chromePath, arguments));
+
+            // Notify the WindowManager. It will find the window on its own.
+            WindowManager.OnProfileOpened(profileName);
         }
         catch (Exception ex)
         {
             _log($"Không thể mở trình duyệt cho profile '{profileName}': {ex.Message}");
+        }
+    }
+
+    public void OpenUrlInProfile(string profileName, string url)
+    {
+        string chromePath = GetSelectedChromePath();
+        if (string.IsNullOrWhiteSpace(chromePath) || !File.Exists(chromePath))
+        {
+            _log("Vui lòng chọn một đường dẫn trình duyệt hợp lệ trong cài đặt.");
+            return;
+        }
+        if (string.IsNullOrEmpty(profileName))
+        {
+            _log("Không có profile nào được chọn để mở URL.");
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(url)) return;
+
+        try
+        {
+            string arguments = $"--profile-directory=\"{profileName}\" \"{url}\"";
+            _log($"Đang mở URL '{url}' trong profile '{profileName}'...");
+            Process.Start(new ProcessStartInfo(chromePath, arguments));
+            WindowManager.OnProfileOpened(profileName);
+        }
+        catch (Exception ex)
+        {
+            _log($"Không thể mở URL '{url}' trong profile '{profileName}': {ex.Message}");
         }
     }
 

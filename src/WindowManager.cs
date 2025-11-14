@@ -21,8 +21,6 @@ public static class WindowManager
     [DllImport("user32.dll")]
     private static extern int GetWindowTextLength(IntPtr hWnd);
     [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-    [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool IsWindow(IntPtr hWnd);
     [DllImport("user32.dll")]
@@ -35,78 +33,90 @@ public static class WindowManager
     [DllImport("user32.dll")]
     static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")]
-    static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
-    [DllImport("user32.dll")]
-    static extern bool TileWindows(IntPtr hwndParent, int wHow, Rectangle rc, int cKids, IntPtr[] lpKids);
-    [DllImport("user32.dll")]
-    static extern bool CascadeWindows(IntPtr hwndParent, int wHow, Rectangle rc, int cKids, IntPtr[] lpKids);
-
+    private static extern bool MoveWindow(IntPtr hWnd, int X, int Y, int nWidth, int nHeight, bool bRepaint);
+    [DllImport("user32.dll")][return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
     // --- Window State Constants ---
     public const int SW_MAXIMIZE = 3;
     public const int SW_MINIMIZE = 6;
     public const int SW_RESTORE = 9;
     public const uint WM_CLOSE = 0x0010;
-    const byte VK_CONTROL = 0x11;
-    const byte VK_TAB = 0x09;
-    const uint KEYEVENTF_KEYUP = 0x0002;
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
-
 
     // --- State Tracking ---
-    private static readonly Dictionary<string, Process> _profileProcesses = new Dictionary<string, Process>();
     private static readonly Dictionary<string, IntPtr> _profileWindowHandles = new Dictionary<string, IntPtr>();
+    private static List<IntPtr> _windowCycleList = new List<IntPtr>();
+    private static int _currentWindowIndex = 0;
 
-    // --- Public Methods ---
+    #region Public Window Actions
 
-    public static void RegisterProfileProcess(string profileName, Process process)
-    {
-        if (string.IsNullOrEmpty(profileName) || process == null) return;
-        _profileProcesses[profileName] = process;
-        // Use a background thread to find the handle to avoid blocking UI
-        ThreadPool.QueueUserWorkItem(_ =>
-        {
-            Thread.Sleep(500); // Give window time to appear
-            FindAndCacheWindowHandle(profileName);
-        });
-    }
-
-    public static void UnregisterProfile(string profileName)
-    {
-        if (string.IsNullOrEmpty(profileName)) return;
-        _profileProcesses.Remove(profileName);
-        _profileWindowHandles.Remove(profileName);
-    }
     public static void MaximizeWindow(string profileName) => PerformActionOnProfileWindow(profileName, SW_MAXIMIZE);
     public static void MinimizeWindow(string profileName) => PerformActionOnProfileWindow(profileName, SW_MINIMIZE);
     public static void RestoreWindow(string profileName) => PerformActionOnProfileWindow(profileName, SW_RESTORE);
+    public static void CloseProfileWindow(string profileName) => CloseSpecificProfileWindow(profileName);
 
-    public static void PerformActionOnProfileWindow(string profileName, int command)
+    private static void PerformActionOnProfileWindow(string profileName, int command)
     {
         IntPtr targetHWnd = GetWindowHandle(profileName);
-        if (targetHWnd != IntPtr.Zero) ShowWindow(targetHWnd, command);
+        if (targetHWnd != IntPtr.Zero) 
+        {
+            ShowWindow(targetHWnd, command);
+        }
     }
 
-    public static void CloseProfileWindow(string profileName)
+    public static void ArrangeWindows(int columns, int margin, bool hideTaskbar)
     {
-        IntPtr targetHWnd = GetWindowHandle(profileName, false);
-        if (targetHWnd != IntPtr.Zero)
+        var chromeWindows = GetAllChromeWindows();
+        if (chromeWindows.Count == 0) return;
+
+        var screen = Screen.PrimaryScreen.WorkingArea;
+        // If hideTaskbar is checked, use the full screen bounds instead of the working area.
+        if (hideTaskbar) { screen = Screen.PrimaryScreen.Bounds; }
+
+        if (columns <= 0) columns = 1;
+        int rows = (int)Math.Ceiling((double)chromeWindows.Count / columns);
+        if (rows <= 0) rows = 1;
+
+        int windowWidth = (screen.Width - (columns - 1) * margin) / columns;
+        int windowHeight = (screen.Height - (rows - 1) * margin) / rows;
+
+        for (int i = 0; i < chromeWindows.Count; i++)
         {
-            SendMessage(targetHWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            IntPtr hWnd = chromeWindows[i];
+            int row = i / columns;
+            int col = i % columns;
+
+            int x = screen.Left + col * (windowWidth + margin);
+            int y = screen.Top + row * (windowHeight + margin);
+
+            ShowWindow(hWnd, SW_RESTORE); // Restore if maximized/minimized before moving
+            MoveWindow(hWnd, x, y, windowWidth, windowHeight, true);
         }
-        UnregisterProfile(profileName);
     }
+
+    public static void SwitchToNextWindow()
+    {
+        _windowCycleList = GetAllChromeWindows(); // Refresh the list on each call
+        if (_windowCycleList.Count == 0) return;
+
+        _currentWindowIndex++;
+        if (_currentWindowIndex >= _windowCycleList.Count) 
+        { 
+            _currentWindowIndex = 0; 
+        }
+
+        IntPtr nextWindow = _windowCycleList[_currentWindowIndex];
+        ShowWindow(nextWindow, SW_RESTORE);
+        SetForegroundWindow(nextWindow);
+    }
+
     public static string GetActiveTabTitle(string profileName)
     {
-        IntPtr hWnd = GetWindowHandle(profileName, false);
+        IntPtr hWnd = GetWindowHandle(profileName);
         if (hWnd != IntPtr.Zero)
         {
             int length = GetWindowTextLength(hWnd);
@@ -115,93 +125,108 @@ public static class WindowManager
             GetWindowText(hWnd, sb, sb.Capacity);
             return sb.ToString();
         }
-        return "N/A";
+        return "Không tìm thấy cửa sổ";
     }
 
-    public static void SwitchToNextTab(string profileName)
+    #endregion
+
+    #region Window Finding and Management
+
+    public static List<IntPtr> GetAllChromeWindows()
     {
-        IntPtr hWnd = GetWindowHandle(profileName, false);
-        if (hWnd != IntPtr.Zero)
+        List<IntPtr> windowHandles = new List<IntPtr>();
+        EnumWindows((hWnd, lParam) =>
         {
-            SetForegroundWindow(hWnd);
-            Thread.Sleep(100); // Small delay
-            // Simulate Ctrl+Tab
-            keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero); // Press Ctrl
-            keybd_event(VK_TAB, 0, 0, UIntPtr.Zero); // Press Tab
-            keybd_event(VK_TAB, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // Release Tab
-            keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // Release Ctrl
-        }
-    }
-    public static void ArrangeWindows(bool cascade)
-    {
-        var handles = _profileWindowHandles.Values.Where(h => IsWindow(h) && IsWindowVisible(h)).ToArray();
-        if (handles.Length < 1) return;
+            if (!IsWindowVisible(hWnd) || GetWindowTextLength(hWnd) == 0) 
+                return true; 
 
-        Rectangle screen = Screen.PrimaryScreen.WorkingArea;
+            uint processId;
+            GetWindowThreadProcessId(hWnd, out processId);
+            try
+            {
+                Process p = Process.GetProcessById((int)processId);
+                if (p.ProcessName.ToLower() == "chrome" || p.ProcessName.ToLower() == "msedge")
+                { 
+                    // Extra check to avoid including background/utility windows
+                    if (GetWindowRect(hWnd, out RECT r) && r.Right - r.Left > 100) // Basic check for a reasonably sized window
+                    {
+                         windowHandles.Add(hWnd);
+                    }
+                }
+            }
+            catch { /* Ignore processes that can't be accessed */ }
 
-        if (cascade)
-        {
-            // The 'rc' parameter is ignored for this command
-            CascadeWindows(IntPtr.Zero, 0 /*MDITILE_ZORDER*/, Rectangle.Empty, handles.Length, handles);
-        }
-        else // Tile
-        {
-            TileWindows(IntPtr.Zero, 1/*MDITILE_HORIZONTAL*/, screen, handles.Length, handles);
-        }
+            return true; 
+        }, IntPtr.Zero);
+
+        return windowHandles;
     }
 
-
-    // --- Private Helper Methods ---
-    private static IntPtr GetWindowHandle(string profileName, bool unregisterOnFailure = true)
+    private static IntPtr GetWindowHandle(string profileName)
     {
         if (string.IsNullOrEmpty(profileName)) return IntPtr.Zero;
-
-        // Check cache first
-        if (_profileWindowHandles.TryGetValue(profileName, out IntPtr handle) && IsWindow(handle))
+        if (_profileWindowHandles.TryGetValue(profileName, out IntPtr handle) && IsWindow(handle) && IsWindowVisible(handle))
         {
             return handle;
         }
 
-        // If not in cache or invalid, find it
-        IntPtr foundHandle = FindAndCacheWindowHandle(profileName);
+        IntPtr foundHandle = FindWindowByProfileName(profileName);
         if (foundHandle != IntPtr.Zero)
         {
-            return foundHandle;
+            _profileWindowHandles[profileName] = foundHandle;
         }
-
-        // If still not found, unregister if requested
-        if (unregisterOnFailure) UnregisterProfile(profileName);
-        return IntPtr.Zero;
-    }
-
-    private static IntPtr FindAndCacheWindowHandle(string profileName)
-    {
-        if (!_profileProcesses.TryGetValue(profileName, out Process proc) || proc.HasExited) return IntPtr.Zero;
-
-        IntPtr foundHandle = IntPtr.Zero;
-
-        // Attempt to get the main window handle directly. This is faster.
-        proc.Refresh();
-        if (proc.MainWindowHandle != IntPtr.Zero && IsWindowVisible(proc.MainWindowHandle))
+        else
         {
-            foundHandle = proc.MainWindowHandle;
+            _profileWindowHandles.Remove(profileName);
         }
-        else // Fallback to enumerating all windows for the process
-        {
-            EnumWindows((hWnd, lParam) =>
-            {
-                GetWindowThreadProcessId(hWnd, out uint pid);
-                if (pid == proc.Id && IsWindowVisible(hWnd) && GetWindowTextLength(hWnd) > 0)
-                {
-                    foundHandle = hWnd;
-                    return false; // Stop enumerating
-                }
-                return true; // Continue enumerating
-            }, IntPtr.Zero);
-        }
-
-        if (foundHandle != IntPtr.Zero) _profileWindowHandles[profileName] = foundHandle;
-
         return foundHandle;
     }
+
+    private static IntPtr FindWindowByProfileName(string profileName)
+    {
+        IntPtr foundHandle = IntPtr.Zero;
+        string searchPattern = $" - {profileName}";
+        string defaultProfilePattern = "Google Chrome"; // Or Edge, etc.
+
+        var allWindows = GetAllChromeWindows();
+
+        foreach (var hWnd in allWindows)
+        {
+            StringBuilder titleBuilder = new StringBuilder(1024);
+            GetWindowText(hWnd, titleBuilder, titleBuilder.Capacity);
+            string windowTitle = titleBuilder.ToString();
+
+            // Special handling for the Default profile which might not have a "- Profile" indicator
+            if (profileName.Equals("Default", StringComparison.OrdinalIgnoreCase))
+            {
+                bool isDefault = true;
+                for (int i=1; i < 100; i++) // Check if it is another numbered profile
+                {
+                    if(windowTitle.Contains($" - Profile {i}")) {
+                         isDefault = false;
+                         break;
+                    }
+                }
+                if (isDefault) { foundHandle = hWnd; break; }
+            }
+            else if (windowTitle.Contains(searchPattern))
+            {
+                foundHandle = hWnd;
+                break; 
+            }
+        }
+        return foundHandle;
+    }
+    
+    private static void CloseSpecificProfileWindow(string profileName)
+    {
+        IntPtr targetHWnd = GetWindowHandle(profileName);
+        if (targetHWnd != IntPtr.Zero)
+        {
+            SendMessage(targetHWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+            _profileWindowHandles.Remove(profileName);
+        }
+    }
+
+    #endregion
 }

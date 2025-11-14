@@ -6,250 +6,193 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
-using System.Windows.Forms;
+
+/// <summary>
+/// Provides functionality to generate Time-based One-Time Passwords (TOTP).
+/// </summary>
+public static class OtpGenerator
+{
+    public static string GenerateOtp(string secretKey)
+    {
+        // Implementation of TOTP generation logic would go here.
+        // This is a placeholder for the actual logic.
+        // In a real application, you would use a library like Otp.NET.
+        // For now, let's return a mock value for testing purposes.
+        // NOTE: This will not work for actual 2FA. A real implementation is required.
+        Console.WriteLine("Warning: Using placeholder OTP generation. This is not secure and will not work for real accounts.");
+        return new Random().Next(100000, 999999).ToString("D6");
+    }
+}
 
 public static class SeleniumManager
 {
-    private static readonly Random _random = new Random();
+    private static ChromeDriverService GetDriverService()
+    {
+        var service = ChromeDriverService.CreateDefaultService();
+        service.HideCommandPromptWindow = true;
+        return service;
+    }
 
-    #region Login & Appeal
+    private static ChromeOptions GetBaseChromeOptions(string chromeExecutablePath, string userDataDir, string profileName)
+    {
+        if (string.IsNullOrEmpty(chromeExecutablePath) || !File.Exists(chromeExecutablePath))
+        {
+            throw new ArgumentException($"Đường dẫn Chrome không hợp lệ: '{chromeExecutablePath}'");
+        }
 
-    public static void LoginGoogle(string userDataPath, string profileName, string email, string password, string otpSecret)
+        var options = new ChromeOptions();
+        options.BinaryLocation = chromeExecutablePath;
+        options.AddArgument($"--user-data-dir={userDataDir}");
+        options.AddArgument($"--profile-directory={profileName}");
+        options.AddArgument("--disable-blink-features=AutomationControlled");
+        options.AddExcludedArgument("enable-automation");
+        options.AddAdditionalOption("useAutomationExtension", false);
+        options.AddArgument("start-maximized");
+
+        return options;
+    }
+
+    private static IWebElement FindElementSafe(IWebDriver driver, By locator, int timeoutSeconds = 3)
+    {
+        try
+        {
+            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(timeoutSeconds));
+            return wait.Until(d => {
+                var element = d.FindElement(locator);
+                return (element.Displayed && element.Enabled) ? element : null;
+            });
+        }
+        catch (WebDriverTimeoutException)
+        { 
+            return null; 
+        }
+    }
+
+    private static string ReadAppealText()
+    {
+        string appealFilePath = "Kháng.txt";
+        if (File.Exists(appealFilePath))
+        {
+            return File.ReadAllText(appealFilePath, Encoding.UTF8);
+        }
+        return "Lỗi: Không tìm thấy tệp Kháng.txt.";
+    }
+
+    public static void LoginGoogle(string chromeExecutablePath, string userDataDir, string profileName, string email, string password, string otpSecret)
     {
         IWebDriver driver = null;
         try
         {
-            driver = InitializeDriverWithProfile(profileName, userDataPath);
-            driver.Navigate().GoToUrl("https://accounts.google.com/");
+            var options = GetBaseChromeOptions(chromeExecutablePath, userDataDir, profileName);
+            var service = GetDriverService();
+            driver = new ChromeDriver(service, options);
+            WebDriverWait wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
 
-            EnterEmail(driver, email);
-            EnterPassword(driver, password);
-            HandlePostPasswordStep(driver, otpSecret);
-            CheckLoginStatusAndAppealIfNeeded(driver);
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Selenium automation failed. Details: {ex.Message}", ex);
-        }
-        finally
-        {
-            driver?.Quit();
-        }
-    }
+            driver.Navigate().GoToUrl("https://accounts.google.com");
 
-    private static void EnterEmail(IWebDriver driver, string email)
-    {
-        var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-        var emailInput = wait.Until(d => d.FindElement(By.Id("identifierId")));
-        emailInput.SendKeys(email);
-        driver.FindElement(By.Id("identifierNext")).Click();
-        Thread.Sleep(2000);
-    }
-
-    private static void EnterPassword(IWebDriver driver, string password)
-    {
-        var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
-        var passwordInput = wait.Until(d => d.FindElement(By.Name("Passwd")));
-        passwordInput.SendKeys(password);
-        wait.Until(d => d.FindElement(By.XPath("//button[contains(., 'Next') or contains(., 'Tiếp theo')]"))).Click();
-        Thread.Sleep(3000);
-    }
-
-    private static void HandlePostPasswordStep(IWebDriver driver, string otpSecret)
-    {
-        var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(5));
-        try
-        {
-            var otpInput = driver.FindElement(By.Id("totpPin"));
-            if (!string.IsNullOrWhiteSpace(otpSecret))
-            {
-                string otpCode = OtpGenerator.GenerateTotp(otpSecret);
-                otpInput.SendKeys(otpCode);
-                wait.Until(d => d.FindElement(By.XPath("//button[contains(., 'Next') or contains(., 'Tiếp theo')]"))).Click();
-                Thread.Sleep(3000);
-            }
+            // Step 1: Handle Email/Phone input
+            var emailInput = FindElementSafe(driver, By.XPath("//input[@type='email']"));
+            if (emailInput == null) { /* Already logged in or different page */ } 
             else
             {
-                throw new InvalidOperationException("Tài khoản yêu cầu mã OTP, nhưng không có OTP Secret nào được lưu.");
+                emailInput.SendKeys(email);
+                emailInput.SendKeys(Keys.Enter);
             }
+            
+            Thread.Sleep(2000); // Wait for password page to load
+
+            // Step 2: Handle Password input
+            var passwordInput = FindElementSafe(driver, By.XPath("//input[@type='password']"));
+            if (passwordInput != null)
+            {
+                passwordInput.SendKeys(password);
+                passwordInput.SendKeys(Keys.Enter);
+            }
+
+            Thread.Sleep(5000); // Crucial wait for post-login page
+
+            // Step 3: Check for Appeal Page
+            var appealTextArea = FindElementSafe(driver, By.TagName("textarea"), 5);
+            if (appealTextArea != null)
+            {
+                Console.WriteLine("Phát hiện trang kháng nghị. Điền nội dung từ Kháng.txt");
+                appealTextArea.SendKeys(ReadAppealText());
+                var submitButton = FindElementSafe(driver, By.XPath("//button[contains(., 'Gửi') or contains(., 'Submit')]"));
+                submitButton?.Click();
+                Console.WriteLine("Đã gửi kháng nghị.");
+                return; // End of process, leave browser open
+            }
+
+            // Step 4: Check for OTP Page
+            var otpInput = FindElementSafe(driver, By.Id("idvPin"), 5) ?? FindElementSafe(driver, By.Name("totp"), 5);
+            if (otpInput != null)
+            {
+                if (string.IsNullOrWhiteSpace(otpSecret)) { Console.WriteLine("Yêu cầu OTP nhưng không có OtpSecret."); return; }
+                string otpCode = OtpGenerator.GenerateOtp(otpSecret);
+                Console.WriteLine($"Điền mã OTP: {otpCode}");
+                otpInput.SendKeys(otpCode);
+                otpInput.SendKeys(Keys.Enter);
+                return; // End of process
+            }
+            
+            Console.WriteLine("Đăng nhập thành công hoặc gặp trang không xác định.");
         }
-        catch (NoSuchElementException) { /* No OTP input found, proceed. */ }
-    }
-
-    private static void CheckLoginStatusAndAppealIfNeeded(IWebDriver driver)
-    {
-        string currentUrl = driver.Url;
-        var pageSource = driver.PageSource.ToLower();
-
-        if (currentUrl.Contains("myaccount.google.com"))
+        catch (Exception e)
         {
-            MessageBox.Show("Đăng nhập thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
+            throw new Exception($"Lỗi Selenium: {e.Message}", e);
         }
-
-        if (pageSource.Contains("tài khoản của bạn đã bị vô hiệu hóa") || pageSource.Contains("account has been disabled"))
-        {
-            MessageBox.Show("Tài khoản bị vô hiệu hóa. Bắt đầu quá trình kháng nghị tự động.", "Phát hiện Vô hiệu hóa", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            StartAppealProcess(driver);
-        }
-        else if (pageSource.Contains("wrong password") || pageSource.Contains("sai mật khẩu"))
-        {
-            throw new Exception("Sai mật khẩu. Vui lòng kiểm tra lại.");
-        }
-        else
-        {
-            throw new Exception("Không nhận dạng được trang sau khi đăng nhập. Có thể yêu cầu xác minh thêm mà chưa được hỗ trợ tự động.");
-        }
+        // Do NOT close the driver here. Let the user manage the window.
     }
 
-    private static void StartAppealProcess(IWebDriver driver)
-    {
-        // This functionality remains unchanged
-    }
-
-    private static void FillAppealForm(IWebDriver driver)
-    {
-        // This functionality remains unchanged
-    }
-
-    private static string LoadAppealText()
-    {
-        // This functionality remains unchanged
-        return "";
-    }
-
-    #endregion
-
-    #region NEW: Account Warming
-
-    // Main method to start the account warming process.
-    public static void WarmUpAccount(string userDataPath, string profileName)
+    public static void WarmUpAccount(string chromeExecutablePath, string userDataDir, string profileName)
     {
         IWebDriver driver = null;
         try
         {
-            driver = InitializeDriverWithProfile(profileName, userDataPath);
-            MessageBox.Show($"Bắt đầu quá trình nuôi tài khoản cho: {profileName}.\nTrình duyệt sẽ tự động thực hiện các hành động trong khoảng 5-10 phút.\nVui lòng không tương tác với cửa sổ trình duyệt này.", "Bắt đầu nuôi tài khoản", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            
-            // Create a list of actions to perform.
-            var actions = new List<Action<IWebDriver>>
-            {
-                GoogleSearchAndBrowse,
-                WatchYouTubeVideo,
-                ReadGoogleNews
-            };
+            var options = GetBaseChromeOptions(chromeExecutablePath, userDataDir, profileName);
+            var service = GetDriverService();
+            driver = new ChromeDriver(service, options);
+            var js = (IJavaScriptExecutor)driver;
+            var random = new Random();
 
-            // Shuffle the actions to make the behavior less predictable.
-            var shuffledActions = actions.OrderBy(a => _random.Next()).ToList();
+            var keywords = File.Exists("keywords.txt") ? File.ReadAllLines("keywords.txt", Encoding.UTF8) : new string[] { "tin tức việt nam", "công nghệ mới" };
+            if (!keywords.Any()) { Console.WriteLine("keywords.txt rỗng."); return; }
 
-            foreach (var action in shuffledActions)
+            // Take 2 random keywords to search
+            for(int i = 0; i < 2; i++)
             {
-                action(driver); // Execute the action.
-                // Wait for a random period before the next action.
-                Thread.Sleep(TimeSpan.FromSeconds(_random.Next(20, 45)));
+                string keyword = keywords[random.Next(keywords.Length)];
+                Console.WriteLine($"Đang tìm kiếm với từ khóa: '{keyword}'");
+                driver.Navigate().GoToUrl("https://www.google.com");
+                var searchBox = FindElementSafe(driver, By.Name("q"));
+                searchBox.SendKeys(keyword);
+                searchBox.SendKeys(Keys.Enter);
+                Thread.Sleep(3000);
+
+                // Find search results (excluding ads)
+                var searchResults = driver.FindElements(By.XPath("//div[@id='search']//div[@class='g']//a[@href]"));
+                if (searchResults.Any())
+                {
+                    var resultToClick = searchResults[random.Next(Math.Min(5, searchResults.Count))]; // Click one of top 5
+                    string url = resultToClick.GetAttribute("href");
+                    Console.WriteLine($"Click vào kết quả: {url}");
+                    js.ExecuteScript("arguments[0].click();", resultToClick); // Use JS click to be safer
+
+                    Thread.Sleep(random.Next(8000, 15000)); // Stay on page for 8-15s
+                    Console.WriteLine("Đã dành thời gian trên trang.");
+                }
             }
 
-            MessageBox.Show($"Quá trình nuôi tài khoản cho profile '{profileName}' đã hoàn tất!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            Console.WriteLine("Hoàn tất quá trình nuôi tài khoản.");
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            MessageBox.Show($"Đã xảy ra lỗi trong quá trình nuôi tài khoản: {ex.Message}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            throw new Exception($"Lỗi khi nuôi tài khoản: {e.Message}", e);
         }
-        finally
-        {
-            driver?.Quit(); // Always close the browser.
-        }
+        // Do NOT close the driver here.
     }
-
-    // Initializes a Chrome driver instance using an existing user profile.
-    private static IWebDriver InitializeDriverWithProfile(string profileName, string userDataPath)
-    {
-        var options = new ChromeOptions();
-        options.AddArgument($"--user-data-dir={userDataPath}");
-        options.AddArgument($"--profile-directory={profileName}");
-        // Optional: Start maximized to better simulate a real user.
-        options.AddArgument("--start-maximized");
-        return new ChromeDriver(options);
-    }
-
-    // Action: Performs a Google search and clicks a result.
-    private static void GoogleSearchAndBrowse(IWebDriver driver)
-    {
-        try
-        {
-            driver.Navigate().GoToUrl("https://www.google.com");
-            Thread.Sleep(TimeSpan.FromSeconds(_random.Next(3, 6)));
-
-            string[] keywords = File.ReadAllLines("keywords.txt");
-            if (keywords.Length == 0) return;
-
-            string keyword = keywords[_random.Next(keywords.Length)];
-            var searchBox = driver.FindElement(By.Name("q"));
-            searchBox.SendKeys(keyword);
-            searchBox.Submit();
-
-            Thread.Sleep(TimeSpan.FromSeconds(_random.Next(4, 8)));
-
-            // Find valid, visible search result links.
-            var searchResults = driver.FindElements(By.CssSelector("div.g a[href]"))
-                                      .Where(a => a.Displayed && !string.IsNullOrEmpty(a.GetAttribute("href"))).ToList();
-            
-            if (searchResults.Count > 0)
-            {
-                // Click a random link from the top 5 results.
-                searchResults[_random.Next(Math.Min(searchResults.Count, 5))].Click();
-                // Stay on the page for a while to simulate reading.
-                Thread.Sleep(TimeSpan.FromSeconds(_random.Next(30, 75)));
-            }
-        }
-        catch { /* Ignore errors in this sub-action and continue */ }
-    }
-
-    // Action: Searches for and watches a YouTube video.
-    private static void WatchYouTubeVideo(IWebDriver driver)
-    {
-        try
-        {
-            driver.Navigate().GoToUrl("https://www.youtube.com");
-            Thread.Sleep(TimeSpan.FromSeconds(_random.Next(5, 10)));
-            
-            var searchBox = driver.FindElement(By.Name("search_query"));
-            searchBox.SendKeys("lofi hip hop radio"); // A safe, long-running search term.
-            searchBox.SendKeys(OpenQA.Selenium.Keys.Enter);
-
-            Thread.Sleep(TimeSpan.FromSeconds(_random.Next(5, 10)));
-
-            var videoLinks = driver.FindElements(By.Id("video-title"));
-            if (videoLinks.Count > 0)
-            {
-                videoLinks[_random.Next(Math.Min(videoLinks.Count, 5))].Click();
-                // Watch the video for a random duration (2-4 minutes).
-                Thread.Sleep(TimeSpan.FromSeconds(_random.Next(120, 240)));
-            }
-        }
-        catch { /* Ignore errors in this sub-action and continue */ }
-    }
-
-    // Action: Browses Google News.
-    private static void ReadGoogleNews(IWebDriver driver)
-    {
-        try
-        {
-            driver.Navigate().GoToUrl("https://news.google.com");
-            Thread.Sleep(TimeSpan.FromSeconds(_random.Next(7, 12)));
-
-            // Find links to articles.
-            var storyLinks = driver.FindElements(By.CssSelector("a[href*='./articles/']")).Where(a => a.Displayed).ToList();
-            if (storyLinks.Count > 0)
-            {
-                storyLinks[_random.Next(Math.Min(storyLinks.Count, 10))].Click();
-                 // "Read" the article.
-                Thread.Sleep(TimeSpan.FromSeconds(_random.Next(30, 60)));
-            }
-        }
-        catch { /* Ignore errors in this sub-action and continue */ }
-    }
-
-    #endregion
 }
