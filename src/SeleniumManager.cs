@@ -11,23 +11,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
-/// <summary>
-/// Provides functionality to generate Time-based One-Time Passwords (TOTP).
-/// </summary>
-public static class OtpGenerator
-{
-    public static string GenerateOtp(string secretKey)
-    {
-        // Implementation of TOTP generation logic would go here.
-        // This is a placeholder for the actual logic.
-        // In a real application, you would use a library like Otp.NET.
-        // For now, let's return a mock value for testing purposes.
-        // NOTE: This will not work for actual 2FA. A real implementation is required.
-        Console.WriteLine("Warning: Using placeholder OTP generation. This is not secure and will not work for real accounts.");
-        return new Random().Next(100000, 999999).ToString("D6");
-    }
-}
-
 public static class SeleniumManager
 {
     private static ChromeDriverService GetDriverService()
