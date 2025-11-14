@@ -18,12 +18,11 @@ public class MainForm : Form
     private ListBox urlsListBox;
     private TextBox emailTextBox, passwordTextBox, otpTextBox, newUrlTextBox, logTextBox;
     private Button saveProfileButton, addUrlButton, deleteSelectedUrlButton, deleteAllUrlsButton, loginGoogleButton, btnWarmUp;
-    private Button minimizeSelectedButton, maximizeSelectedButton, restoreSelectedButton, closeSelectedButton, switchToNextTabButton, arrangeCascadeButton, arrangeTileButton;
+    private Button minimizeSelectedButton, maximizeSelectedButton, restoreSelectedButton, closeSelectedButton, switchToNextTabButton, arrangeCascadeButton;
     private Button addPathButton, deletePathButton, discoverProfilesButton;
     private Button openConfigButton, openProfilesJsonButton, openUrlJsonButton;
     private CheckBox alwaysOnTopCheckBox, hideProfileNamesCheckBox;
     private Label profileCountLabel;
-    private ContextMenuStrip profileContextMenuStrip;
     private System.Windows.Forms.Timer statusUpdateTimer;
     private StatusStrip statusBar;
     private ToolStripStatusLabel activeTabPanel;
@@ -92,7 +91,6 @@ public class MainForm : Form
         InitializeUrlManagement(contentTableLayout, 2, 0);
         InitializeLogArea(mainTableLayout, 0, 3);
         InitializeStatusBar();
-        InitializeContextMenu();
 
         this.ResumeLayout(false);
     }
@@ -122,7 +120,12 @@ public class MainForm : Form
         var detailsLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
         detailsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         detailsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        detailsLayout.RowStyles.AddRange(new[] { new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.AutoSize) });
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         profileDetailsGroupBox.Controls.Add(detailsLayout);
 
         emailTextBox = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(5) };
@@ -224,8 +227,6 @@ public class MainForm : Form
         this.Controls.Add(statusBar);
         statusUpdateTimer = new System.Windows.Forms.Timer { Interval = 1000 };
     }
-
-    private void InitializeContextMenu() { /* Unchanged */ }
 
     private void WireUpEventHandlers()
     {
