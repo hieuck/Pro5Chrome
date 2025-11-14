@@ -230,23 +230,84 @@ public class MainForm : Form
 
     private void WireUpEventHandlers()
     {
-        // ... other handlers
+        openConfigButton.Click += (s, e) => SafeOpenFile("config.json");
+        openProfilesJsonButton.Click += (s, e) => SafeOpenFile("profiles.json");
+        openUrlJsonButton.Click += (s, e) => SafeOpenFile("urls.json");
+
+        addPathButton.Click += AddPathButton_Click;
+        deletePathButton.Click += DeletePathButton_Click;
+        discoverProfilesButton.Click += DiscoverProfilesButton_Click;
+        chromePathComboBox.SelectedIndexChanged += ChromePathComboBox_SelectedIndexChanged;
+
+        alwaysOnTopCheckBox.CheckedChanged += (s, e) => { this.TopMost = alwaysOnTopCheckBox.Checked; };
+        hideProfileNamesCheckBox.CheckedChanged += (s, e) => _manager.SetHideProfileNames(hideProfileNamesCheckBox.Checked);
+
+        profilesListView.ItemSelectionChanged += ProfilesListView_ItemSelectionChanged;
+        profilesListView.MouseDoubleClick += ProfilesListView_MouseDoubleClick;
+
+        saveProfileButton.Click += SaveProfileButton_Click;
+        loginGoogleButton.Click += LoginGoogleButton_Click;
         btnWarmUp.Click += BtnWarmUp_Click;
+
+        addUrlButton.Click += AddUrlButton_Click;
+        deleteSelectedUrlButton.Click += DeleteSelectedUrlButton_Click;
+        deleteAllUrlsButton.Click += DeleteAllUrlsButton_Click;
+        urlsListBox.MouseDoubleClick += UrlsListBox_MouseDoubleClick;
+
+        minimizeSelectedButton.Click += (s, e) => ForEachSelectedProfile(p => WindowManager.MinimizeWindow(p));
+        maximizeSelectedButton.Click += (s, e) => ForEachSelectedProfile(p => WindowManager.MaximizeWindow(p));
+        restoreSelectedButton.Click += (s, e) => ForEachSelectedProfile(p => WindowManager.RestoreWindow(p));
+        closeSelectedButton.Click += (s, e) => ForEachSelectedProfile(p => _manager.CloseChromeProfile(p));
         switchToNextTabButton.Click += (s, e) => ForEachSelectedProfile(p => WindowManager.SwitchToNextTab(p));
         arrangeCascadeButton.Click += (s, e) => WindowManager.ArrangeWindows(true);
 
         statusUpdateTimer.Tick += StatusUpdateTimer_Tick;
         this.FormClosing += (s, e) => statusUpdateTimer.Stop();
-        // ... other handlers
     }
 
     private void MainForm_Load(object sender, EventArgs e)
     {
-        // ... unchanged
+        _manager.LoadConfig();
+        _manager.LoadProfiles();
+        _urlManager.LoadUrls();
+        RefreshChromePathComboBox();
+        RefreshProfileListView();
+        RefreshUrlsListBox();
+        SetControlStates();
         statusUpdateTimer.Start();
     }
 
-    // ... Refresh methods are unchanged
+    // ... Refresh methods
+    private void RefreshProfileListView()
+    {
+        profilesListView.Items.Clear();
+        var profiles = _manager.GetProfiles();
+        for (int i = 0; i < profiles.Count; i++)
+        {
+            var item = new ListViewItem((i + 1).ToString());
+            item.SubItems.Add(profiles[i].Name);
+            item.Tag = profiles[i].Name;
+            profilesListView.Items.Add(item);
+        }
+        profileCountLabel.Text = $"Số lượng Profiles: {profiles.Count}";
+    }
+
+    private void RefreshUrlsListBox()
+    {
+        urlsListBox.Items.Clear();
+        urlsListBox.Items.AddRange(_urlManager.GetUrls().ToArray());
+    }
+
+    private void RefreshChromePathComboBox()
+    {
+        chromePathComboBox.Items.Clear();
+        chromePathComboBox.Items.AddRange(_manager.GetChromePaths().ToArray());
+        if (_manager.GetConfig().SelectedIndex < chromePathComboBox.Items.Count)
+        {
+            chromePathComboBox.SelectedIndex = _manager.GetConfig().SelectedIndex;
+        }
+    }
+
 
     private void StatusUpdateTimer_Tick(object sender, EventArgs e)
     {
@@ -262,7 +323,118 @@ public class MainForm : Form
         }
     }
     
-    // ... other event handlers and helper methods are mostly unchanged
+    // Event Handlers
+
+    private void ChromePathComboBox_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (chromePathComboBox.SelectedIndex != -1)
+        {
+            _manager.SetSelectedChromePath(chromePathComboBox.SelectedIndex);
+        }
+    }
+
+    private void AddPathButton_Click(object sender, EventArgs e)
+    {
+        using (var fbd = new FolderBrowserDialog() { Description = "Chọn thư mục chứa file thực thi của trình duyệt (chrome.exe, msedge.exe,...)" })
+        {
+            if (fbd.ShowDialog() == DialogResult.OK)
+            {
+                _manager.AddChromePath(fbd.SelectedPath);
+                RefreshChromePathComboBox();
+            }
+        }
+    }
+
+    private void DeletePathButton_Click(object sender, EventArgs e)
+    {
+        if (chromePathComboBox.SelectedIndex != -1)
+        {
+            _manager.RemoveChromePath(chromePathComboBox.SelectedIndex);
+            RefreshChromePathComboBox();
+        }
+        else
+        {
+            MessageBox.Show("Vui lòng chọn một đường dẫn để xóa.", "Chưa chọn đường dẫn", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+    }
+
+    private void DiscoverProfilesButton_Click(object sender, EventArgs e)
+    {
+        _manager.DiscoverProfiles();
+        RefreshProfileListView();
+    }
+
+    private void ProfilesListView_ItemSelectionChanged(object sender, ListViewItemSelectionChangedEventArgs e)
+    {
+        SetControlStates();
+        if (e.IsSelected)
+        {
+            var profile = _manager.GetProfile(e.Item.Tag.ToString());
+            if (profile != null)
+            {
+                emailTextBox.Text = profile.Email;
+                passwordTextBox.Text = profile.Password;
+                otpTextBox.Text = profile.OtpSecret;
+            }
+        }
+        else
+        {
+            emailTextBox.Clear();
+            passwordTextBox.Clear();
+            otpTextBox.Clear();
+        }
+    }
+
+    private void ProfilesListView_MouseDoubleClick(object sender, MouseEventArgs e)
+    {
+        if (profilesListView.SelectedItems.Count > 0)
+        {
+            string profileName = profilesListView.SelectedItems[0].Tag.ToString();
+            _manager.OpenChromeProfile(profileName, _urlManager.GetUrls());
+        }
+    }
+
+    private void SaveProfileButton_Click(object sender, EventArgs e)
+    {
+        string profileName = GetFirstSelectedProfile();
+        if (profileName != null)
+        {
+            _manager.UpdateProfileDetails(profileName, emailTextBox.Text, passwordTextBox.Text, otpTextBox.Text);
+            Log($"Đã lưu thông tin cho profile: {profileName}");
+        }
+    }
+
+    private async void LoginGoogleButton_Click(object sender, EventArgs e)
+    {
+        string profileName = GetFirstSelectedProfile();
+        if (string.IsNullOrEmpty(profileName)) return;
+
+        var profile = _manager.GetProfile(profileName);
+        if (string.IsNullOrEmpty(profile.Email) || string.IsNullOrEmpty(profile.Password))
+        {
+            MessageBox.Show("Vui lòng nhập Email và Password cho profile này trước.", "Thiếu thông tin", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
+
+        Log($"Bắt đầu đăng nhập Google cho profile: {profileName}");
+        SetAutomationButtonsEnabled(false);
+        this.Cursor = Cursors.WaitCursor;
+
+        try
+        {
+            await Task.Run(() => _manager.LoginGoogle(profileName));
+        }
+        catch (Exception ex)
+        {
+            Log($"LỖI khi đăng nhập Google cho {profileName}: {ex.Message}");
+            MessageBox.Show(ex.Message, "Lỗi Tự Động Hóa", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        finally
+        {
+            SetAutomationButtonsEnabled(true);
+            this.Cursor = Cursors.Default;
+        }
+    }
 
     private async void BtnWarmUp_Click(object sender, EventArgs e)
     {
@@ -274,8 +446,7 @@ public class MainForm : Form
         }
 
         Log($"Bắt đầu quá trình nuôi tài khoản cho profile: {profileName}");
-        btnWarmUp.Enabled = false;
-        loginGoogleButton.Enabled = false;
+        SetAutomationButtonsEnabled(false);
         this.Cursor = Cursors.WaitCursor;
 
         try
@@ -289,11 +460,47 @@ public class MainForm : Form
         }
         finally
         {
-            btnWarmUp.Enabled = true;
-            loginGoogleButton.Enabled = true;
+            SetAutomationButtonsEnabled(true);
             this.Cursor = Cursors.Default;
         }
     }
+
+    private void AddUrlButton_Click(object sender, EventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(newUrlTextBox.Text))
+        {
+            _urlManager.AddUrl(newUrlTextBox.Text.Trim());
+            newUrlTextBox.Clear();
+            RefreshUrlsListBox();
+        }
+    }
+
+    private void DeleteSelectedUrlButton_Click(object sender, EventArgs e)
+    {
+        if (urlsListBox.SelectedItem != null)
+        {
+            _urlManager.RemoveUrl(urlsListBox.SelectedItem.ToString());
+            RefreshUrlsListBox();
+        }
+    }
+
+    private void DeleteAllUrlsButton_Click(object sender, EventArgs e)
+    {
+        if (MessageBox.Show("Bạn có chắc muốn xóa tất cả các URL?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+        {
+            _urlManager.ClearUrls();
+            RefreshUrlsListBox();
+        }
+    }
+
+    private void UrlsListBox_MouseDoubleClick(object sender, MouseEventArgs e)
+    {
+        if (urlsListBox.SelectedItem != null)
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(urlsListBox.SelectedItem.ToString()) { UseShellExecute = true });
+        }
+    }
+
 
     private void SetControlStates()
     {
@@ -310,8 +517,14 @@ public class MainForm : Form
         closeSelectedButton.Enabled = areAnyProfilesSelected;
         switchToNextTabButton.Enabled = areAnyProfilesSelected;
     }
+    
+    private void SetAutomationButtonsEnabled(bool enabled)
+    {
+        loginGoogleButton.Enabled = enabled;
+        btnWarmUp.Enabled = enabled;
+    }
 
-    // Helper methods (GetSelectedProfileNames, etc.) are unchanged
+    // Helper methods
     private string[] GetSelectedProfileNames()
     {
         if (profilesListView.SelectedItems.Count == 0) return new string[0];
