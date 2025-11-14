@@ -9,7 +9,6 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using OtpNet;
-using Base32Encoding;
 
 public static class SeleniumManager
 {
@@ -115,7 +114,7 @@ public static class SeleniumManager
             if (otpInput != null)
             {
                 if (string.IsNullOrWhiteSpace(otpSecret)) { Console.WriteLine("Yêu cầu OTP nhưng không có OtpSecret."); return; }
-                string otpCode = new Totp(Base32.Decode(otpSecret)).ComputeTotp();
+                string otpCode = new Totp(OtpNet.Base32Encoding.ToBytes(otpSecret)).ComputeTotp();
                 Console.WriteLine($"Điền mã OTP: {otpCode}");
                 otpInput.SendKeys(otpCode);
                 otpInput.SendKeys(OpenQA.Selenium.Keys.Enter);

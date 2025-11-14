@@ -20,11 +20,14 @@
     <!-- This is the key: Automatically manages chromedriver.exe -->
     <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="126.0.6478.6100" />
 
-    <!-- NEW: Library for generating Time-based One-Time Passwords (TOTP) -->
+    <!-- Library for generating Time-based One-Time Passwords (TOTP) -->
     <PackageReference Include="Otp.NET" Version="1.4.0" />
+
+    <!-- NEW: Library for Base32 decoding, needed for OTP -->
+    <PackageReference Include="Base32" Version="1.6.0" />
   </ItemGroup>
 
-  <!-- NEW: This section ensures that necessary text files are copied to the output directory (e.g., bin/Debug) -->
+  <!-- This section ensures that necessary text files are copied to the output directory (e.g., bin/Debug) -->
   <ItemGroup>
     <None Update="Kháng.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
