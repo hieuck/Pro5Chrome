@@ -22,9 +22,6 @@
 
     <!-- Library for generating Time-based One-Time Passwords (TOTP) -->
     <PackageReference Include="Otp.NET" Version="1.4.0" />
-
-    <!-- NEW: Library for Base32 decoding, needed for OTP -->
-    <PackageReference Include="Base32" Version="1.6.0" />
   </ItemGroup>
 
   <!-- This section ensures that necessary text files are copied to the output directory (e.g., bin/Debug) -->
