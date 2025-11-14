@@ -186,7 +186,6 @@ public static class WindowManager
     {
         IntPtr foundHandle = IntPtr.Zero;
         string searchPattern = $" - {profileName}";
-        string defaultProfilePattern = "Google Chrome"; // Or Edge, etc.
 
         var allWindows = GetAllChromeWindows();
 

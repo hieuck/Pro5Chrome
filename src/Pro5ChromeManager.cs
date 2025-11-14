@@ -230,9 +230,6 @@ public class Pro5ChromeManager
             _log($"Đang mở profile '{profileName}'...");
 
             Process.Start(new ProcessStartInfo(chromePath, arguments));
-
-            // Notify the WindowManager. It will find the window on its own.
-            WindowManager.OnProfileOpened(profileName);
         }
         catch (Exception ex)
         {
@@ -260,7 +257,6 @@ public class Pro5ChromeManager
             string arguments = $"--profile-directory=\"{profileName}\" \"{url}\"";
             _log($"Đang mở URL '{url}' trong profile '{profileName}'...");
             Process.Start(new ProcessStartInfo(chromePath, arguments));
-            WindowManager.OnProfileOpened(profileName);
         }
         catch (Exception ex)
         {

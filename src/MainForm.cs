@@ -1,5 +1,6 @@
 
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -119,7 +120,12 @@ public class MainForm : Form
         var detailsLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2 };
         detailsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         detailsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        detailsLayout.RowStyles.AddRange(new RowStyle[] { new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.AutoSize), new RowStyle(SizeType.AutoSize) });
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+        detailsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         profileDetailsGroupBox.Controls.Add(detailsLayout);
 
         emailTextBox = new TextBox { Dock = DockStyle.Fill, Margin = new Padding(5) };

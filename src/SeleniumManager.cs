@@ -6,10 +6,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using OtpNet;
+using Base32Encoding;
 
 public static class SeleniumManager
 {
@@ -83,7 +83,7 @@ public static class SeleniumManager
             else
             {
                 emailInput.SendKeys(email);
-                emailInput.SendKeys(Keys.Enter);
+                emailInput.SendKeys(OpenQA.Selenium.Keys.Enter);
             }
             
             Thread.Sleep(2000); // Wait for password page to load
@@ -93,7 +93,7 @@ public static class SeleniumManager
             if (passwordInput != null)
             {
                 passwordInput.SendKeys(password);
-                passwordInput.SendKeys(Keys.Enter);
+                passwordInput.SendKeys(OpenQA.Selenium.Keys.Enter);
             }
 
             Thread.Sleep(5000); // Crucial wait for post-login page
@@ -115,10 +115,10 @@ public static class SeleniumManager
             if (otpInput != null)
             {
                 if (string.IsNullOrWhiteSpace(otpSecret)) { Console.WriteLine("Yêu cầu OTP nhưng không có OtpSecret."); return; }
-                string otpCode = OtpGenerator.GenerateOtp(otpSecret);
+                string otpCode = new Totp(Base32.Decode(otpSecret)).ComputeTotp();
                 Console.WriteLine($"Điền mã OTP: {otpCode}");
                 otpInput.SendKeys(otpCode);
-                otpInput.SendKeys(Keys.Enter);
+                otpInput.SendKeys(OpenQA.Selenium.Keys.Enter);
                 return; // End of process
             }
             
@@ -153,7 +153,7 @@ public static class SeleniumManager
                 driver.Navigate().GoToUrl("https://www.google.com");
                 var searchBox = FindElementSafe(driver, By.Name("q"));
                 searchBox.SendKeys(keyword);
-                searchBox.SendKeys(Keys.Enter);
+                searchBox.SendKeys(OpenQA.Selenium.Keys.Enter);
                 Thread.Sleep(3000);
 
                 // Find search results (excluding ads)
