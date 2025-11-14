@@ -8,25 +8,23 @@ using System.Windows.Forms;
 public class UrlManager
 {
     private List<string> _urls = new List<string>();
-    private const string URL_FILE = "URL.json";
+    private const string URL_FILE = "urls.json";
 
     public UrlManager()
     {
-        LoadUrls();
+        // Constructor is fine, LoadUrls will be called from MainForm
     }
 
-    private void LoadUrls()
+    public void LoadUrls()
     {
         if (File.Exists(URL_FILE))
         {
             try
             {
                 string json = File.ReadAllText(URL_FILE);
-                // Handle case where the file is empty or just has whitespace
-                if (string.IsNullOrWhiteSpace(json))
-                {
-                    _urls = new List<string>();
-                    return;
+                if (string.IsNullOrWhiteSpace(json)){
+                     _urls = new List<string>();
+                     return;
                 }
                 _urls = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
             }
@@ -34,7 +32,7 @@ public class UrlManager
             {
                 MessageBox.Show($"Tệp 'URL.json' có định dạng không hợp lệ và sẽ được tạo lại.\nLỗi: {ex.Message}", "Lỗi Phân tích JSON", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 _urls = new List<string>();
-                SaveUrls(); // Create a new valid, empty file
+                SaveUrls(); 
             }
             catch (Exception ex)
             {
@@ -45,7 +43,7 @@ public class UrlManager
         else
         {
             _urls = new List<string>();
-            SaveUrls(); // Create the file if it doesn't exist
+            SaveUrls(); 
         }
     }
 
@@ -64,7 +62,6 @@ public class UrlManager
 
     public List<string> GetUrls()
     {
-        // No need to load urls again, they are loaded in the constructor.
         return _urls;
     }
 
@@ -77,7 +74,7 @@ public class UrlManager
         }
     }
 
-    public void DeleteUrl(string url)
+    public void RemoveUrl(string url)
     {
         if (_urls.Contains(url))
         {
@@ -86,7 +83,7 @@ public class UrlManager
         }
     }
 
-    public void ClearAllUrls()
+    public void ClearUrls()
     {
         _urls.Clear();
         SaveUrls();

@@ -12,14 +12,14 @@ public class Profile
     public string Name { get; set; }
     public string Email { get; set; }
     public string Password { get; set; }
-    public string Otp { get; set; } // Stores the OTP Secret
+    public string OtpSecret { get; set; } // Renamed from Otp for clarity
 }
 
 public class AppConfig
 {
     public List<string> ChromePaths { get; set; } = new List<string>();
-    public string SelectedChromePath { get; set; }
-    public bool AlwaysOnTop { get; set; } = false;
+    public int SelectedIndex { get; set; } = -1; // Use index for combo box selection
+    public bool HideProfileNames { get; set; } // For the feature to hide profile names
 }
 
 public class Pro5ChromeManager
@@ -33,14 +33,12 @@ public class Pro5ChromeManager
 
     public Pro5ChromeManager(Action<string> logger)
     {
-        _log = logger ?? (message => { }); // If no logger is provided, do nothing.
-        LoadConfig();
-        LoadProfiles();
+        _log = logger ?? (message => { });
     }
 
     #region Configuration Management
 
-    private void LoadConfig()
+    public void LoadConfig()
     {
         try
         {
@@ -63,20 +61,27 @@ public class Pro5ChromeManager
         }
         catch (Exception ex) { _log($"Lỗi khi lưu file config.json: {ex.Message}"); }
     }
-
-    public List<string> GetAllChromePaths() => _config.ChromePaths;
-    public string GetSelectedChromePath() => _config.SelectedChromePath;
-    public bool IsAlwaysOnTop() => _config.AlwaysOnTop;
-    public void SetSelectedChromePath(string path) { if (_config.ChromePaths.Contains(path)) { _config.SelectedChromePath = path; SaveConfig(); } }
-    public void AddChromePath(string path) { if (!string.IsNullOrWhiteSpace(path) && File.Exists(path)) { path = Path.GetFullPath(path); if (!_config.ChromePaths.Contains(path)) { _config.ChromePaths.Add(path); SaveConfig(); _log($"Đã thêm đường dẫn trình duyệt: {path}"); } } }
-    public void DeleteChromePath(string path) { if (_config.ChromePaths.Remove(path)) { if (_config.SelectedChromePath == path) { _config.SelectedChromePath = _config.ChromePaths.FirstOrDefault(); } SaveConfig(); _log($"Đã xóa đường dẫn trình duyệt: {path}"); } }
-    public void SetAlwaysOnTop(bool value) { _config.AlwaysOnTop = value; SaveConfig(); }
+    public AppConfig GetConfig() => _config;
+    public List<string> GetChromePaths() => _config.ChromePaths;
+    public string GetSelectedChromePath()
+    {
+        if (_config.SelectedIndex >= 0 && _config.SelectedIndex < _config.ChromePaths.Count)
+        {
+            return _config.ChromePaths[_config.SelectedIndex];
+        }
+        return null;
+    }
+    public void SetSelectedChromePath(int index) { _config.SelectedIndex = index; SaveConfig(); }
+    public void AddChromePath(string path) { if (!string.IsNullOrWhiteSpace(path) && !_config.ChromePaths.Contains(path)) { _config.ChromePaths.Add(path); SaveConfig(); _log($"Đã thêm đường dẫn trình duyệt: {path}"); } }
+    public void RemoveChromePath(int index) { if (index >= 0 && index < _config.ChromePaths.Count) { string path = _config.ChromePaths[index]; _config.ChromePaths.RemoveAt(index); if (_config.SelectedIndex >= _config.ChromePaths.Count) { _config.SelectedIndex = _config.ChromePaths.Count - 1; } SaveConfig(); _log($"Đã xóa đường dẫn trình duyệt: {path}"); } }
+    public void SetHideProfileNames(bool hide) { _config.HideProfileNames = hide; SaveConfig(); }
 
     public string GetEffectiveUserDataPath()
     {
-        if (!string.IsNullOrEmpty(_config.SelectedChromePath) && File.Exists(_config.SelectedChromePath))
+        string selectedPath = GetSelectedChromePath();
+        if (!string.IsNullOrEmpty(selectedPath) && File.Exists(selectedPath))
         {
-            DirectoryInfo exeDir = new DirectoryInfo(Path.GetDirectoryName(_config.SelectedChromePath));
+            DirectoryInfo exeDir = new DirectoryInfo(Path.GetDirectoryName(selectedPath));
             string potentialPath = Path.Combine(exeDir.FullName, "User Data");
             if (Directory.Exists(potentialPath)) return potentialPath;
             if (exeDir.Parent != null) { potentialPath = Path.Combine(exeDir.Parent.FullName, "User Data"); if (Directory.Exists(potentialPath)) return potentialPath; }
@@ -88,9 +93,9 @@ public class Pro5ChromeManager
 
     #region Automation
 
-    public void AutomateLogin(string profileName)
+    public void LoginGoogle(string profileName)
     {
-        var profileDetails = GetProfileDetails(profileName);
+        var profileDetails = GetProfile(profileName);
         if (profileDetails == null || string.IsNullOrEmpty(profileDetails.Email) || string.IsNullOrEmpty(profileDetails.Password))
         {
             _log("Vui lòng lưu email và mật khẩu cho profile này trước khi tự động đăng nhập.");
@@ -101,12 +106,13 @@ public class Pro5ChromeManager
         {
             string userDataPath = GetEffectiveUserDataPath();
             _log($"Bắt đầu đăng nhập cho profile '{profileName}'...");
-            SeleniumManager.LoginGoogle(userDataPath, profileName, profileDetails.Email, profileDetails.Password, profileDetails.Otp);
+            SeleniumManager.LoginGoogle(userDataPath, profileName, profileDetails.Email, profileDetails.Password, profileDetails.OtpSecret);
             _log("Quá trình đăng nhập/kháng nghị đã được Selenium xử lý.");
         }
         catch (Exception ex)
         {
             _log($"LỖI khi tự động đăng nhập cho '{profileName}': {ex.Message}");
+            throw; // Re-throw to UI
         }
     }
 
@@ -134,7 +140,7 @@ public class Pro5ChromeManager
 
     #region Profile Data Management
 
-    private void LoadProfiles()
+    public void LoadProfiles()
     {
         if (!File.Exists(ProfilesFileName)) { _profiles = new List<Profile>(); return; }
         try
@@ -160,17 +166,17 @@ public class Pro5ChromeManager
         catch (Exception ex) { _log($"Lỗi khi lưu file profiles.json: {ex.Message}"); }
     }
 
-    public List<string> GetProfiles() => _profiles.Select(p => p.Name).ToList();
-    public Profile GetProfileDetails(string profileName) => _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
+    public List<Profile> GetProfiles() => _profiles;
+    public Profile GetProfile(string profileName) => _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
 
-    public void DiscoverAndAddProfiles()
+    public void DiscoverProfiles()
     {
         string userDataPath = GetEffectiveUserDataPath();
         if (!Directory.Exists(userDataPath)) { _log($"Không tìm thấy thư mục User Data tại: {userDataPath}"); return; }
         int newProfilesCount = 0;
         try
         {
-            var existingProfileNames = new HashSet<string>(this.GetProfiles(), StringComparer.OrdinalIgnoreCase);
+            var existingProfileNames = new HashSet<string>(_profiles.Select(p => p.Name), StringComparer.OrdinalIgnoreCase);
             var directories = Directory.GetDirectories(userDataPath, "Profile *", SearchOption.TopDirectoryOnly).Concat(Directory.GetDirectories(userDataPath, "Default", SearchOption.TopDirectoryOnly));
             foreach (var dir in directories)
             {
@@ -189,7 +195,7 @@ public class Pro5ChromeManager
 
     public void UpdateProfileDetails(string profileName, string email, string password, string otp)
     {
-        var profileToUpdate = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
+        var profileToUpdate = GetProfile(profileName);
         if (profileToUpdate == null)
         {
             profileToUpdate = new Profile { Name = profileName };
@@ -198,59 +204,30 @@ public class Pro5ChromeManager
         }
         profileToUpdate.Email = email;
         profileToUpdate.Password = password;
-        profileToUpdate.Otp = otp;
+        profileToUpdate.OtpSecret = otp;
         SaveProfiles();
-         _log($"Đã lưu thông tin cho profile: {profileName}");
-    }
-
-    public bool DeleteProfile(string profileName, bool deleteDirectory)
-    {
-        var profileToRemove = _profiles.FirstOrDefault(p => p.Name.Equals(profileName, StringComparison.OrdinalIgnoreCase));
-        if (profileToRemove == null) return false;
-        _profiles.Remove(profileToRemove);
-        SaveProfiles();
-        _log($"Đã xóa profile '{profileName}' khỏi danh sách.");
-        if (deleteDirectory)
-        {
-            try
-            {
-                string profilePath = Path.Combine(GetEffectiveUserDataPath(), profileName);
-                if (Directory.Exists(profilePath)) 
-                {
-                    Directory.Delete(profilePath, true);
-                    _log($"Đã xóa thư mục dữ liệu cho profile '{profileName}'.");
-                }
-            }
-            catch (Exception ex) { _log($"Lỗi khi xóa thư mục profile '{profileName}': {ex.Message}"); }
-        }
-        return true;
     }
 
     #endregion
 
     #region Browser Process & Window Management
 
-    public void OpenChrome(string profileName, string url = null)
+    public void OpenChromeProfile(string profileName, IEnumerable<string> urls = null)
     {
-        if (string.IsNullOrWhiteSpace(_config.SelectedChromePath) || !File.Exists(_config.SelectedChromePath))
+        string chromePath = GetSelectedChromePath();
+        if (string.IsNullOrWhiteSpace(chromePath) || !File.Exists(chromePath))
         {
             _log("Vui lòng chọn một đường dẫn trình duyệt hợp lệ trong cài đặt.");
             return;
         }
         try
         {
-            string arguments = $"--profile-directory=\"{profileName}\"";
-            if (!string.IsNullOrEmpty(url))
-            {
-                arguments += $" \"{url}\"";
-                _log($"Đang mở profile '{profileName}' với URL: {url}");
-            }
-            else
-            {
-                 _log($"Đang mở profile '{profileName}'...");
-            }
+            string firstUrl = urls?.FirstOrDefault() ?? "";
+            string arguments = $"--profile-directory=\"{profileName}\" \"{firstUrl}\"";
+            
+            _log($"Đang mở profile '{profileName}'...");
 
-            ProcessStartInfo startInfo = new ProcessStartInfo(_config.SelectedChromePath, arguments);
+            ProcessStartInfo startInfo = new ProcessStartInfo(chromePath, arguments);
             Process proc = Process.Start(startInfo);
             if (proc != null)
             {
@@ -263,7 +240,7 @@ public class Pro5ChromeManager
         }
     }
 
-    public void CloseProfileWindow(string profileName)
+    public void CloseChromeProfile(string profileName)
     {
         if (!string.IsNullOrWhiteSpace(profileName)) 
         {

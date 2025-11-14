@@ -71,9 +71,10 @@ public static class WindowManager
     {
         if (string.IsNullOrEmpty(profileName) || process == null) return;
         _profileProcesses[profileName] = process;
+        // Use a background thread to find the handle to avoid blocking UI
         ThreadPool.QueueUserWorkItem(_ =>
         {
-            Thread.Sleep(500);
+            Thread.Sleep(500); // Give window time to appear
             FindAndCacheWindowHandle(profileName);
         });
     }
@@ -84,6 +85,9 @@ public static class WindowManager
         _profileProcesses.Remove(profileName);
         _profileWindowHandles.Remove(profileName);
     }
+    public static void MaximizeWindow(string profileName) => PerformActionOnProfileWindow(profileName, SW_MAXIMIZE);
+    public static void MinimizeWindow(string profileName) => PerformActionOnProfileWindow(profileName, SW_MINIMIZE);
+    public static void RestoreWindow(string profileName) => PerformActionOnProfileWindow(profileName, SW_RESTORE);
 
     public static void PerformActionOnProfileWindow(string profileName, int command)
     {
@@ -106,6 +110,7 @@ public static class WindowManager
         if (hWnd != IntPtr.Zero)
         {
             int length = GetWindowTextLength(hWnd);
+            if (length == 0) return "N/A";
             StringBuilder sb = new StringBuilder(length + 1);
             GetWindowText(hWnd, sb, sb.Capacity);
             return sb.ToString();
@@ -119,11 +124,12 @@ public static class WindowManager
         if (hWnd != IntPtr.Zero)
         {
             SetForegroundWindow(hWnd);
-            Thread.Sleep(100);
-            keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero);
-            keybd_event(VK_TAB, 0, 0, UIntPtr.Zero);
-            keybd_event(VK_TAB, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
-            keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+            Thread.Sleep(100); // Small delay
+            // Simulate Ctrl+Tab
+            keybd_event(VK_CONTROL, 0, 0, UIntPtr.Zero); // Press Ctrl
+            keybd_event(VK_TAB, 0, 0, UIntPtr.Zero); // Press Tab
+            keybd_event(VK_TAB, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // Release Tab
+            keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, UIntPtr.Zero); // Release Ctrl
         }
     }
     public static void ArrangeWindows(bool cascade)
@@ -135,11 +141,12 @@ public static class WindowManager
 
         if (cascade)
         {
-            CascadeWindows(IntPtr.Zero, 0, screen, handles.Length, handles);
+            // The 'rc' parameter is ignored for this command
+            CascadeWindows(IntPtr.Zero, 0 /*MDITILE_ZORDER*/, Rectangle.Empty, handles.Length, handles);
         }
         else // Tile
         {
-            TileWindows(IntPtr.Zero, 1, screen, handles.Length, handles); // MDITILE_HORIZONTAL
+            TileWindows(IntPtr.Zero, 1/*MDITILE_HORIZONTAL*/, screen, handles.Length, handles);
         }
     }
 
@@ -149,17 +156,20 @@ public static class WindowManager
     {
         if (string.IsNullOrEmpty(profileName)) return IntPtr.Zero;
 
+        // Check cache first
         if (_profileWindowHandles.TryGetValue(profileName, out IntPtr handle) && IsWindow(handle))
         {
             return handle;
         }
 
+        // If not in cache or invalid, find it
         IntPtr foundHandle = FindAndCacheWindowHandle(profileName);
         if (foundHandle != IntPtr.Zero)
         {
             return foundHandle;
         }
 
+        // If still not found, unregister if requested
         if (unregisterOnFailure) UnregisterProfile(profileName);
         return IntPtr.Zero;
     }
@@ -170,12 +180,13 @@ public static class WindowManager
 
         IntPtr foundHandle = IntPtr.Zero;
 
+        // Attempt to get the main window handle directly. This is faster.
         proc.Refresh();
         if (proc.MainWindowHandle != IntPtr.Zero && IsWindowVisible(proc.MainWindowHandle))
         {
             foundHandle = proc.MainWindowHandle;
         }
-        else
+        else // Fallback to enumerating all windows for the process
         {
             EnumWindows((hWnd, lParam) =>
             {
@@ -183,9 +194,9 @@ public static class WindowManager
                 if (pid == proc.Id && IsWindowVisible(hWnd) && GetWindowTextLength(hWnd) > 0)
                 {
                     foundHandle = hWnd;
-                    return false;
+                    return false; // Stop enumerating
                 }
-                return true;
+                return true; // Continue enumerating
             }, IntPtr.Zero);
         }
 
